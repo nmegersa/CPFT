@@ -1,21 +1,24 @@
 :root {
-  --bg: #0b0f1a;
-  --bg-elevated: #121828;
-  --bg-card: #141b2e;
-  --bg-hover: #1a2338;
-  --border: rgba(148, 163, 184, 0.12);
-  --border-strong: rgba(148, 163, 184, 0.22);
+  /* "Evergreen ledger": deep forest ink, champagne gold, fresh jade. */
+  --bg: #080d0a;
+  --bg-elevated: #0e1611;
+  --bg-card: #111b14;
+  --bg-hover: #17241b;
+  --border: rgba(214, 197, 148, 0.10);
+  --border-strong: rgba(214, 197, 148, 0.22);
 
-  --text: #eef2f8;
-  --text-secondary: #9aa7bd;
-  --text-muted: #64748b;
+  --text: #f1f5ec;
+  --text-secondary: #a2b0a0;
+  --text-muted: #6d7c6e;
 
-  --accent: #10b981;
-  --accent-soft: rgba(16, 185, 129, 0.14);
+  --accent: #3ecf8e;
+  --accent-soft: rgba(62, 207, 142, 0.14);
+  --gold: #e6c15c;
+  --gold-soft: rgba(230, 193, 92, 0.14);
   --violet: #8b5cf6;
   --blue: #3b82f6;
 
-  --good: #10b981;
+  --good: #3ecf8e;
   --warning: #f59e0b;
   --danger: #ef4444;
   --info: #3b82f6;
@@ -86,10 +89,10 @@ button {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), #059669);
+  background: linear-gradient(135deg, var(--gold), var(--accent) 85%);
   display: grid;
   place-items: center;
-  color: #052e22;
+  color: #081209;
   flex-shrink: 0;
 }
 
@@ -117,7 +120,7 @@ button {
 .nav-link:hover {
   background: var(--bg-hover);
   color: var(--text);
-  box-shadow: 0 0 14px rgba(16, 185, 129, 0.12);
+  box-shadow: 0 0 14px rgba(62, 207, 142, 0.12);
 }
 
 .nav-link.active {
@@ -217,10 +220,10 @@ button {
 .demo-card:hover,
 .sim-box:hover,
 .insight:hover {
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: rgba(62, 207, 142, 0.35);
   box-shadow:
-    0 0 20px rgba(16, 185, 129, 0.1),
-    0 0 60px rgba(16, 185, 129, 0.05);
+    0 0 20px rgba(62, 207, 142, 0.1),
+    0 0 60px rgba(62, 207, 142, 0.05);
 }
 
 .demo-card,
@@ -231,8 +234,8 @@ button {
 }
 
 .auth-card:hover {
-  border-color: rgba(16, 185, 129, 0.3);
-  box-shadow: 0 0 32px rgba(16, 185, 129, 0.08);
+  border-color: rgba(62, 207, 142, 0.3);
+  box-shadow: 0 0 32px rgba(62, 207, 142, 0.08);
 }
 
 .card-title {
@@ -401,7 +404,7 @@ button {
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.progress-fill.good { background: linear-gradient(90deg, #059669, var(--good)); }
+.progress-fill.good { background: linear-gradient(90deg, #2aa876, var(--good)); }
 .progress-fill.warning { background: linear-gradient(90deg, #d97706, var(--warning)); }
 .progress-fill.danger { background: linear-gradient(90deg, #dc2626, var(--danger)); }
 
@@ -425,7 +428,7 @@ button {
   font-weight: 600;
 }
 
-.badge.good { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+.badge.good { background: rgba(62, 207, 142, 0.14); color: #5fe0a8; }
 .badge.warning { background: rgba(245, 158, 11, 0.14); color: #fbbf24; }
 .badge.danger { background: rgba(239, 68, 68, 0.14); color: #f87171; }
 .badge.info { background: rgba(59, 130, 246, 0.14); color: #60a5fa; }
@@ -504,10 +507,10 @@ button {
 
 .row-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: rgba(62, 207, 142, 0.35);
   box-shadow:
-    0 0 18px rgba(16, 185, 129, 0.1),
-    0 0 48px rgba(16, 185, 129, 0.05);
+    0 0 18px rgba(62, 207, 142, 0.1),
+    0 0 48px rgba(62, 207, 142, 0.05);
 }
 
 /* ---------- Insights ---------- */
@@ -664,7 +667,7 @@ button {
   border: 1px solid var(--border);
 }
 
-.sim-message.good { background: rgba(16, 185, 129, 0.1); color: #6ee7b7; }
+.sim-message.good { background: rgba(62, 207, 142, 0.1); color: #6ee7b7; }
 .sim-message.warning { background: rgba(245, 158, 11, 0.1); color: #fcd34d; }
 .sim-message.danger { background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
 .sim-message.info { background: rgba(59, 130, 246, 0.1); color: #93c5fd; }
@@ -677,14 +680,14 @@ button {
   left: 50%;
   transform: translateX(-50%);
   background: var(--bg-elevated);
-  border: 1px solid rgba(16, 185, 129, 0.5);
+  border: 1px solid rgba(62, 207, 142, 0.5);
   color: #6ee7b7;
   padding: 12px 22px;
   border-radius: 99px;
   font-size: 14px;
   font-weight: 600;
   z-index: 100;
-  box-shadow: 0 0 24px rgba(16, 185, 129, 0.2), 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 24px rgba(62, 207, 142, 0.2), 0 8px 32px rgba(0, 0, 0, 0.5);
   animation: toast-in 0.25s ease;
 }
 
@@ -767,7 +770,7 @@ button {
 .chip:hover {
   border-color: var(--accent);
   color: var(--text);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 12px rgba(62, 207, 142, 0.25);
 }
 
 .chip.active {
@@ -800,13 +803,14 @@ button {
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: #052e22;
+  background: linear-gradient(135deg, var(--gold), var(--accent));
+  color: #081209;
+  font-weight: 700;
 }
 
 .btn-primary:hover {
-  background: #34d399;
-  box-shadow: 0 0 18px rgba(16, 185, 129, 0.45);
+  filter: brightness(1.1);
+  box-shadow: 0 0 20px rgba(230, 193, 92, 0.35), 0 0 28px rgba(62, 207, 142, 0.25);
 }
 
 .btn-primary:disabled {
@@ -823,7 +827,7 @@ button {
 .btn-ghost:hover {
   border-color: var(--accent);
   color: var(--accent);
-  box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 0 14px rgba(62, 207, 142, 0.25);
 }
 
 .btn-block {
@@ -845,7 +849,7 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 16px clamp(16px, 5vw, 48px);
-  background: rgba(11, 15, 26, 0.85);
+  background: rgba(8, 13, 10, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
@@ -881,7 +885,7 @@ button {
   right: -60px;
   width: 480px;
   height: 480px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.16), transparent 65%);
+  background: radial-gradient(circle, rgba(230, 193, 92, 0.12), rgba(62, 207, 142, 0.10) 40%, transparent 65%);
   pointer-events: none;
 }
 
@@ -893,10 +897,12 @@ button {
 }
 
 .hero h1 .accent-text {
-  background: linear-gradient(90deg, var(--accent), #6ee7b7);
+  background: linear-gradient(90deg, var(--gold), var(--accent), #7ff0c0, var(--gold));
+  background-size: 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: gradient-slide 6s ease infinite;
 }
 
 .hero p {
@@ -992,10 +998,10 @@ button {
 
 .feature-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: rgba(62, 207, 142, 0.35);
   box-shadow:
-    0 0 20px rgba(16, 185, 129, 0.12),
-    0 8px 40px rgba(16, 185, 129, 0.06);
+    0 0 20px rgba(62, 207, 142, 0.12),
+    0 8px 40px rgba(62, 207, 142, 0.06);
 }
 
 .feature-card .feature-icon {
@@ -1018,18 +1024,18 @@ button {
   color: var(--text-secondary);
 }
 
-/* Light band for contrast (balanced bright/dark) */
+/* Warm ivory band for contrast — matches the champagne/evergreen palette */
 .landing-light {
-  background: #eef2f7;
-  color: #101828;
+  background: linear-gradient(180deg, #f4f1e6, #ede9d8);
+  color: #1b2418;
 }
 
 .landing-light h2 {
-  color: #101828;
+  color: #1b2418;
 }
 
 .landing-light > p {
-  color: #475467;
+  color: #55604f;
 }
 
 .audience-grid {
@@ -1039,11 +1045,11 @@ button {
 }
 
 .audience-card {
-  background: #ffffff;
-  border: 1px solid #e4e7ec;
+  background: #fdfcf7;
+  border: 1px solid #ddd6bd;
   border-radius: var(--radius);
   padding: 22px;
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+  box-shadow: 0 1px 3px rgba(27, 36, 24, 0.06);
   transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
 }
 
@@ -1051,20 +1057,20 @@ button {
   transform: translateY(-3px);
   border-color: rgba(5, 150, 105, 0.45);
   box-shadow:
-    0 0 22px rgba(16, 185, 129, 0.22),
+    0 0 22px rgba(62, 207, 142, 0.22),
     0 8px 24px rgba(16, 24, 40, 0.08);
 }
 
 .audience-card h3 {
   font-size: 15.5px;
   font-weight: 700;
-  color: #101828;
+  color: #1b2418;
   margin-bottom: 6px;
 }
 
 .audience-card p {
   font-size: 13.5px;
-  color: #475467;
+  color: #55604f;
 }
 
 .landing-cta {
@@ -1103,7 +1109,7 @@ button {
   justify-content: center;
   padding: 24px 16px;
   background:
-    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(16, 185, 129, 0.12), transparent),
+    radial-gradient(ellipse 70% 50% at 50% -10%, rgba(62, 207, 142, 0.12), transparent),
     var(--bg);
 }
 
@@ -1201,8 +1207,8 @@ button {
 }
 
 .form-alert.success {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.25);
+  background: rgba(62, 207, 142, 0.1);
+  border-color: rgba(62, 207, 142, 0.25);
   color: #6ee7b7;
 }
 
@@ -1247,12 +1253,12 @@ button {
 }
 
 .date-field .date-input:hover {
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: rgba(62, 207, 142, 0.35);
 }
 
 .date-field .date-input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 0 3px rgba(62, 207, 142, 0.15);
 }
 
 .date-field .date-input::-webkit-calendar-picker-indicator {
@@ -1325,3 +1331,106 @@ button {
 }
 .tx-action:hover { color: var(--text); border-color: var(--border-strong); background: var(--bg-elevated); }
 .tx-action.danger:hover { color: #f87171; border-color: rgba(248,113,113,0.4); }
+
+/* ---------- Landing motion ---------- */
+html { scroll-behavior: smooth; }
+
+@keyframes gradient-slide {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: none; }
+}
+
+.hero-enter {
+  animation: fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
+.demo-float { animation: float-slow 7s ease-in-out infinite; }
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.reveal.in { opacity: 1; transform: none; }
+
+/* Drifting gradient orbs behind the hero */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+  z-index: 0;
+}
+.orb-a {
+  width: 380px; height: 380px;
+  left: -120px; top: 10%;
+  background: radial-gradient(circle, rgba(62, 207, 142, 0.14), transparent 70%);
+  animation: drift-a 16s ease-in-out infinite;
+}
+.orb-b {
+  width: 300px; height: 300px;
+  right: -80px; bottom: -10%;
+  background: radial-gradient(circle, rgba(230, 193, 92, 0.11), transparent 70%);
+  animation: drift-b 20s ease-in-out infinite;
+}
+@keyframes drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(50px, -35px); }
+}
+@keyframes drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-45px, 30px); }
+}
+
+.feature-card { transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.7s ease; }
+.feature-card:hover { transform: translateY(-4px); border-color: rgba(230, 193, 92, 0.35); }
+.feature-card.reveal { transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.25s ease, box-shadow 0.25s ease; }
+.feature-card.reveal.in:hover { transform: translateY(-4px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-enter, .demo-float, .orb-a, .orb-b, .hero h1 .accent-text { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ---------- Page transitions (app) ---------- */
+.page-anim > * {
+  animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* Stagger the first few blocks so the page "pops" in as it loads */
+.page-anim > *:nth-child(1) { animation-delay: 0.02s; }
+.page-anim > *:nth-child(2) { animation-delay: 0.08s; }
+.page-anim > *:nth-child(3) { animation-delay: 0.14s; }
+.page-anim > *:nth-child(4) { animation-delay: 0.2s; }
+.page-anim > *:nth-child(5) { animation-delay: 0.26s; }
+.page-anim > *:nth-child(n + 6) { animation-delay: 0.32s; }
+
+/* Cascade cards inside the first grid/stack of each page */
+.page-anim .grid > *,
+.page-anim .stack > .grid > * {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.page-anim .grid > *:nth-child(1) { animation-delay: 0.1s; }
+.page-anim .grid > *:nth-child(2) { animation-delay: 0.16s; }
+.page-anim .grid > *:nth-child(3) { animation-delay: 0.22s; }
+.page-anim .grid > *:nth-child(4) { animation-delay: 0.28s; }
+.page-anim .grid > *:nth-child(n + 5) { animation-delay: 0.34s; }
+
+/* Row cards (transactions, subscriptions, accounts) slide in gently */
+.page-anim .row-card {
+  animation: fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.15s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-anim > *, .page-anim .grid > *, .page-anim .row-card { animation: none; }
+}

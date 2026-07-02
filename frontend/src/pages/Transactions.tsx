@@ -165,7 +165,7 @@ export default function Transactions() {
 
       <div className="field" style={{ marginBottom: 14 }}>
         <input
-          type="search"
+          type="text"
           placeholder="Search transactions…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

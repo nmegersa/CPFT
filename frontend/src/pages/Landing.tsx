@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import UtilizationRing from '../components/UtilizationRing'
 import { CardIcon, ChartIcon, HomeIcon, ListIcon, LogoIcon, RepeatIcon } from '../components/icons'
@@ -58,6 +58,22 @@ export default function Landing() {
   const [demoBalance, setDemoBalance] = useState(400)
   const demoRatio = demoBalance / DEMO_LIMIT
 
+  // Reveal-on-scroll: adds .in when an element enters the viewport.
+  useEffect(() => {
+    const io = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('in')
+            io.unobserve(e.target)
+          }
+        }),
+      { threshold: 0.12 },
+    )
+    document.querySelectorAll('.reveal').forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [])
+
   return (
     <div className="landing">
       <nav className="landing-nav">
@@ -81,7 +97,9 @@ export default function Landing() {
       </nav>
 
       <header className="hero">
-        <div>
+        <div className="orb orb-a" aria-hidden="true" />
+        <div className="orb orb-b" aria-hidden="true" />
+        <div className="hero-enter">
           <h1>
             Your money and your credit score,{' '}
             <span className="accent-text">finally making sense.</span>
@@ -103,8 +121,8 @@ export default function Landing() {
           <div className="hero-note">No bank connection required — add transactions manually or by CSV.</div>
         </div>
 
-        <div className="hero-demo">
-          <div className="demo-card">
+        <div className="hero-demo hero-enter" style={{ animationDelay: '0.25s' }}>
+          <div className="demo-card demo-float">
             <h3>Try it: the utilization calculator</h3>
             <div className="demo-sub">
               Drag to change your card balance on a {formatCurrency(DEMO_LIMIT)} limit.
@@ -133,7 +151,7 @@ export default function Landing() {
         </div>
       </header>
 
-      <section className="landing-section">
+      <section className="landing-section reveal">
         <h2>The problem, in one sentence</h2>
         <p>
           Most finance apps are built for people with mortgages — and most students
@@ -142,8 +160,8 @@ export default function Landing() {
           what your credit card is doing behind your back.
         </p>
         <div className="feature-grid">
-          {features.map(({ icon: Icon, color, title, text }) => (
-            <div className="feature-card" key={title}>
+          {features.map(({ icon: Icon, color, title, text }, i) => (
+            <div className="feature-card reveal" style={{ transitionDelay: `${i * 90}ms` }} key={title}>
               <div className="feature-icon" style={{ background: `${color}22`, color }}>
                 <Icon size={20} />
               </div>
@@ -155,15 +173,15 @@ export default function Landing() {
       </section>
 
       <section className="landing-light">
-        <div className="landing-section">
+        <div className="landing-section reveal">
           <h2>Built for people just getting started</h2>
           <p>
             You do not need an investment portfolio to take your finances seriously.
             CPFT is for the money you have now.
           </p>
           <div className="audience-grid">
-            {audiences.map(({ title, text }) => (
-              <div className="audience-card" key={title}>
+            {audiences.map(({ title, text }, i) => (
+              <div className="audience-card reveal" style={{ transitionDelay: `${i * 110}ms` }} key={title}>
                 <h3>{title}</h3>
                 <p>{text}</p>
               </div>
@@ -172,7 +190,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="landing-section landing-cta">
+      <section className="landing-section landing-cta reveal">
         <h2>Five minutes to set up. Free while you are broke.</h2>
         <p style={{ margin: '8px auto 0' }}>
           Add an account, set a couple of budgets, and see your credit picture today.

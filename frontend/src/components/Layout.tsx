@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { tokenStore } from '../api/auth'
 import {
   BankIcon,
@@ -48,6 +48,7 @@ function NavLinks({ iconSize }: { iconSize: number }) {
 
 export default function Layout() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   function handleLogout() {
     tokenStore.clear()
@@ -74,7 +75,10 @@ export default function Layout() {
       </aside>
 
       <main className="main">
-        <Outlet />
+        {/* key remounts the page on route change so the entrance animation replays */}
+        <div className="page-anim" key={location.pathname}>
+          <Outlet />
+        </div>
       </main>
 
       <nav className="tabbar">

@@ -88,6 +88,27 @@ docker compose up --build
 
 App: http://localhost:5173 · API: http://localhost:8000
 
+## Deploying to production
+
+Set these environment variables on the backend host:
+
+| Variable | Value |
+| --- | --- |
+| `ENVIRONMENT` | `production` (hides /docs, enables HSTS, enforces the checks below) |
+| `SECRET_KEY` | a long random string — the API **refuses to start** with the default |
+| `DATABASE_URL` | your managed Postgres URL |
+| `FRONTEND_BASE_URL` | your deployed frontend URL (only this origin may call the API) |
+
+Then:
+
+1. `alembic upgrade head` against the production database
+2. Frontend: `npm run build` and serve `dist/` (set `VITE_API_URL` to the API URL at build time)
+3. Serve the API behind HTTPS (HSTS is sent automatically in production)
+
+Already built in: bcrypt password hashing, signed JWTs with 24h expiry, per-IP
+rate limiting on auth endpoints, security headers, strict CORS, and
+parameterized queries via SQLAlchemy.
+
 ## Build Phases
 
 1. **Foundation** — users, auth, financial accounts, categories

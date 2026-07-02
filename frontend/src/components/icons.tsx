@@ -107,10 +107,15 @@ export function CoinIcon({ size = 20 }: IconProps) {
   )
 }
 
+/** CPFT mark: a coin with a leaf sprouting from it — money that grows. */
 export function LogoIcon({ size = 18 }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-      <path d="M6 18v-6m6 6V6m6 12v-9" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="14.5" r="6.5" />
+      <path d="M11 18v-5.5" />
+      <path d="M11 8V5.5" />
+      <path d="M11 8c0-2.6 2.1-4.7 4.7-4.7 0 2.6-2.1 4.7-4.7 4.7z" fill="currentColor" fillOpacity="0.25" />
+      <path d="M8.6 13.6c.6-.7 1.5-1.1 2.4-1.1s1.8.4 2.4 1.1" />
     </svg>
   )
 }
