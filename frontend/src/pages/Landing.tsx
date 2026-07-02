@@ -118,7 +118,7 @@ export default function Landing() {
               I already have one
             </Link>
           </div>
-          <div className="hero-note">No bank connection required — add transactions manually or by CSV.</div>
+          <div className="hero-note">No bank connection required — add transactions manually.</div>
         </div>
 
         <div className="hero-demo hero-enter" style={{ animationDelay: '0.25s' }}>
