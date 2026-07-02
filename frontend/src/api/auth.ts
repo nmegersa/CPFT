@@ -36,11 +36,12 @@ export class ApiError extends Error {
 const GENERIC_ERROR = 'Something went wrong. Please try again.'
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const { headers: extraHeaders, ...rest } = options
   let res: Response
   try {
     res = await fetch(`${API_BASE}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...options.headers },
-      ...options,
+      ...rest,
+      headers: { 'Content-Type': 'application/json', ...extraHeaders },
     })
   } catch {
     throw new ApiError('Could not reach the server. Is the backend running?', 0)
@@ -54,10 +55,16 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   }
 
   if (!res.ok) {
-    // Only surface backend messages we wrote ourselves (string `detail`).
-    // Validation arrays and anything else become a generic message.
     const detail = (body as { detail?: unknown } | null)?.detail
-    const message = typeof detail === 'string' ? detail : GENERIC_ERROR
+    let message = GENERIC_ERROR
+    if (typeof detail === 'string') {
+      message = detail
+    } else if (Array.isArray(detail) && detail.length > 0) {
+      // FastAPI validation error: turn the first issue into a readable message.
+      const first = detail[0] as { loc?: unknown[]; msg?: string }
+      const field = Array.isArray(first.loc) ? String(first.loc[first.loc.length - 1]) : ''
+      message = field ? `${field.replaceAll('_', ' ')}: ${first.msg ?? 'invalid value'}` : (first.msg ?? GENERIC_ERROR)
+    }
     throw new ApiError(message, res.status)
   }
 
