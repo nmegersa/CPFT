@@ -107,6 +107,14 @@ export function CoinIcon({ size = 20 }: IconProps) {
   )
 }
 
+export function MenuIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M4 7h16M4 12h16M4 17h16" />
+    </svg>
+  )
+}
+
 /** CPFT mark: a coin with a leaf sprouting from it — money that grows. */
 export function LogoIcon({ size = 18 }: IconProps) {
   return (
