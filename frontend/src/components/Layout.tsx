@@ -1,8 +1,10 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { tokenStore } from '../api/auth'
 import {
+  BankIcon,
   CardIcon,
   ChartIcon,
+  DollarIcon,
   HomeIcon,
   ListIcon,
   LogoIcon,
@@ -13,8 +15,10 @@ import {
 
 const navItems = [
   { to: '/app', label: 'Dashboard', icon: HomeIcon, end: true },
-  { to: '/app/budgets', label: 'Budgets', icon: ChartIcon },
+  { to: '/app/accounts', label: 'Accounts', icon: BankIcon },
   { to: '/app/transactions', label: 'Transactions', icon: ListIcon },
+  { to: '/app/payroll', label: 'Payroll', icon: DollarIcon },
+  { to: '/app/budgets', label: 'Budgets', icon: ChartIcon },
   { to: '/app/credit', label: 'Credit', icon: CardIcon },
   { to: '/app/subscriptions', label: 'Subscriptions', icon: RepeatIcon },
   { to: '/app/profile', label: 'Profile', icon: UserIcon },

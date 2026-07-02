@@ -5,7 +5,9 @@ import Budgets from './pages/Budgets'
 import Credit from './pages/Credit'
 import Dashboard from './pages/Dashboard'
 import ForgotPassword from './pages/auth/ForgotPassword'
+import Accounts from './pages/Accounts'
 import Landing from './pages/Landing'
+import Payroll from './pages/Payroll'
 import Profile from './pages/Profile'
 import Login from './pages/auth/Login'
 import ResetPassword from './pages/auth/ResetPassword'
@@ -36,6 +38,8 @@ export default function App() {
           <Route path="transactions" element={<Transactions />} />
           <Route path="credit" element={<Credit />} />
           <Route path="subscriptions" element={<Subscriptions />} />
+          <Route path="accounts" element={<Accounts />} />
+          <Route path="payroll" element={<Payroll />} />
           <Route path="profile" element={<Profile />} />
         </Route>
       </Routes>

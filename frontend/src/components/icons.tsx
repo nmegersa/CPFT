@@ -51,6 +51,25 @@ export function RepeatIcon({ size = 20 }: IconProps) {
   )
 }
 
+export function BankIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5 12 4l9 5.5" />
+      <path d="M5 10v8m4.5-8v8m5-8v8M19 10v8" />
+      <path d="M3 20h18" />
+    </svg>
+  )
+}
+
+export function DollarIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M12 2v20" />
+      <path d="M16.5 6.5c0-1.5-2-2.5-4.5-2.5S7.5 5 7.5 7s2 2.8 4.5 3.5 4.5 1.5 4.5 3.5-2 3-4.5 3-4.5-1-4.5-2.5" />
+    </svg>
+  )
+}
+
 export function UserIcon({ size = 20 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

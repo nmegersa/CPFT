@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine
 from app.models import Base
-from app.routers import auth
+from app.routers import auth, finance
 
 app = FastAPI(
     title="CPFT API",
@@ -21,6 +21,7 @@ app.add_middleware(
 
 
 app.include_router(auth.router)
+app.include_router(finance.router)
 
 
 @app.on_event("startup")
