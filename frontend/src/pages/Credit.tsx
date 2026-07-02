@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../api/auth'
 import { financeApi, type Account, type Category, type CreditProfile, type Tx } from '../api/finance'
+import Toast from '../components/Toast'
 import TransactionListItem from '../components/TransactionListItem'
 import UtilizationRing from '../components/UtilizationRing'
 import {
@@ -31,6 +32,10 @@ export default function Credit() {
   const [amount, setAmount] = useState('100')
   const [limitForm, setLimitForm] = useState({ accountId: '', limit: '' })
   const [error, setError] = useState('')
+  const [payOpen, setPayOpen] = useState(false)
+  const [payForm, setPayForm] = useState({ fromId: '', amount: '' })
+  const [payError, setPayError] = useState('')
+  const [toast, setToast] = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -86,6 +91,36 @@ export default function Credit() {
         : `Your utilization would ${direction} from ${startLabel} to ${endLabel}, which is considered ${levelName}.`
     return { balance: simBal, limit: simLimit, resulting, message }
   }, [simType, amount, balance, limit, utilization])
+
+  async function submitPayment(e: React.FormEvent) {
+    e.preventDefault()
+    setPayError('')
+    const amt = parseFloat(payForm.amount)
+    if (!payForm.fromId) return setPayError('Choose the account to pay from.')
+    if (isNaN(amt) || amt <= 0) return setPayError('Enter an amount greater than 0.')
+    if (!profile) return
+    try {
+      await financeApi.makeCreditPayment({
+        card_account_id: profile.account_id,
+        from_account_id: payForm.fromId,
+        amount: amt,
+        payment_date: new Date().toISOString().slice(0, 10),
+      })
+      const [p, a, t] = await Promise.all([
+        financeApi.creditProfiles(),
+        financeApi.accounts(),
+        financeApi.transactions(),
+      ])
+      setProfiles(p)
+      setAccounts(a)
+      setTxs(t)
+      setPayOpen(false)
+      setPayForm({ fromId: '', amount: '' })
+      setToast('Payment recorded')
+    } catch (err) {
+      setPayError(err instanceof ApiError ? err.message : 'Something went wrong.')
+    }
+  }
 
   async function addProfile(e: React.FormEvent) {
     e.preventDefault()
@@ -183,6 +218,13 @@ export default function Credit() {
                   </p>
                 </div>
               </div>
+              <button
+                className="btn btn-primary"
+                style={{ marginTop: 14 }}
+                onClick={() => { setPayError(''); setPayOpen(true) }}
+              >
+                Make a payment
+              </button>
               <div className="detail-grid" style={{ marginTop: 18 }}>
                 <div>
                   <div className="detail-label">Current balance</div>
@@ -257,6 +299,52 @@ export default function Credit() {
           </div>
         </div>
       )}
+
+      {payOpen && profile && (
+        <div className="modal-overlay" onClick={() => setPayOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Pay {profile.account_name}</h2>
+            {payError && <div className="form-alert error">{payError}</div>}
+            <form onSubmit={submitPayment} noValidate>
+              <div className="field">
+                <label>Pay from</label>
+                <select
+                  value={payForm.fromId}
+                  onChange={(e) => setPayForm((f) => ({ ...f, fromId: e.target.value }))}
+                >
+                  <option value="">Select an account…</option>
+                  {accounts
+                    .filter((a) => a.account_type !== 'credit_card')
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.account_name} ({formatCurrency(Number(a.current_balance))})
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder={String(balance)}
+                  value={payForm.amount}
+                  onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))}
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setPayOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">Submit payment</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {toast && <Toast message={toast} onClose={() => setToast('')} />}
     </>
   )
 }

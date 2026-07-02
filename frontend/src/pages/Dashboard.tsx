@@ -47,6 +47,20 @@ export default function Dashboard() {
     .filter((t) => t.transaction_type === 'expense' || t.transaction_type === 'fee')
     .reduce((s, t) => s + Number(t.amount), 0)
 
+  // Spending trend: this 30 days vs the 30 days before.
+  const prevStart = daysAgo(60)
+  const prevExpenses = txs
+    .filter((t) => {
+      const d = new Date(t.transaction_date + 'T00:00:00')
+      return d >= prevStart && d < since &&
+        (t.transaction_type === 'expense' || t.transaction_type === 'fee')
+    })
+    .reduce((s, t) => s + Number(t.amount), 0)
+  const trend =
+    prevExpenses > 0
+      ? `${expenses >= prevExpenses ? '+' : ''}${Math.round(((expenses - prevExpenses) / prevExpenses) * 100)}% vs prior 30 days`
+      : undefined
+
   const assets = accounts
     .filter((a) => a.account_type !== 'credit_card')
     .reduce((s, a) => s + Number(a.current_balance), 0)
@@ -97,7 +111,7 @@ export default function Dashboard() {
             hint="Assets minus credit card debt"
           />
           <StatCard label="Income (30d)" value={formatCurrency(income)} tone="positive" />
-          <StatCard label="Spending (30d)" value={formatCurrency(expenses)} tone="negative" />
+          <StatCard label="Spending (30d)" value={formatCurrency(expenses)} tone="negative" hint={trend} />
           <StatCard
             label="Credit Utilization"
             value={profiles.length ? `${(utilization * 100).toFixed(1)}%` : '—'}

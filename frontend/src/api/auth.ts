@@ -55,6 +55,12 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   }
 
   if (!res.ok) {
+    // Session expired: clear the stale token and return to login.
+    if (res.status === 401 && tokenStore.get() && path !== '/auth/login') {
+      tokenStore.clear()
+      window.location.href = '/login'
+      throw new ApiError('Your session expired. Please log in again.', 401)
+    }
     const detail = (body as { detail?: unknown } | null)?.detail
     let message = GENERIC_ERROR
     if (typeof detail === 'string') {

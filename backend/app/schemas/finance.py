@@ -73,6 +73,25 @@ class BudgetOut(BaseModel):
     limit_amount: Decimal
 
 
+class AccountUpdate(BaseModel):
+    account_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    current_balance: Optional[Decimal] = None
+    is_active: Optional[bool] = None
+
+
+class CategoryCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    category_type: str = "expense"
+    color: Optional[str] = None
+
+
+class CreditPaymentCreate(BaseModel):
+    card_account_id: uuid.UUID
+    from_account_id: uuid.UUID
+    amount: Decimal = Field(gt=0)
+    payment_date: date
+
+
 class SubscriptionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=150)
     amount: Decimal = Field(gt=0)

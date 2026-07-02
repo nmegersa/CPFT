@@ -49,6 +49,17 @@ export default function Subscriptions() {
     a.is_active === b.is_active ? Number(b.amount) - Number(a.amount) : a.is_active ? -1 : 1,
   )
 
+  async function remove(sub: Sub) {
+    if (!window.confirm(`Delete "${sub.name}"? Past payments stay in your transactions.`)) return
+    try {
+      await financeApi.deleteSubscription(sub.id)
+      setSubs((all) => all.filter((s) => s.id !== sub.id))
+      setToast('Subscription deleted')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong.')
+    }
+  }
+
   async function toggle(sub: Sub) {
     try {
       const updated = await financeApi.toggleSubscription(sub.id, !sub.is_active)
@@ -156,6 +167,7 @@ export default function Subscriptions() {
                   >
                     {sub.is_active ? 'Pause' : 'Resume'}
                   </button>
+                  <button className="tx-action danger" title="Delete" onClick={() => remove(sub)}>✕</button>
                 </div>
               </div>
             </div>

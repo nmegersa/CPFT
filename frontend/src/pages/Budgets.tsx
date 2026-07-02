@@ -14,6 +14,7 @@ export default function Budgets() {
   const [budgetRows, setBudgetRows] = useState<Budget[]>([])
   const [selected, setSelected] = useState<Category | null>(null)
   const [editing, setEditing] = useState<{ category: Category; limit: string } | null>(null)
+  const [newCat, setNewCat] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [modalError, setModalError] = useState('')
   const [toast, setToast] = useState('')
@@ -115,6 +116,39 @@ export default function Budgets() {
     setEditing({ category, limit: currentLimit ? String(currentLimit) : '' })
   }
 
+  async function removeBudget() {
+    if (!editing) return
+    const row = budgetRows.find((b) => b.category_id === editing.category.id)
+    if (!row) return
+    try {
+      await financeApi.deleteBudget(row.id)
+      setBudgetRows((rows) => rows.filter((r) => r.id !== row.id))
+      setEditing(null)
+      setToast('Budget removed')
+    } catch {
+      setModalError('Could not remove the budget.')
+    }
+  }
+
+  async function addCategory(e: React.FormEvent) {
+    e.preventDefault()
+    const name = (newCat ?? '').trim()
+    if (!name) return
+    try {
+      const colors = ['#f59e0b', '#8b5cf6', '#3b82f6', '#ec4899', '#14b8a6', '#f97316', '#eab308']
+      const cat = await financeApi.createCategory({
+        name,
+        color: colors[name.length % colors.length],
+      })
+      setCategories((c) => [...c, cat])
+      setNewCat(null)
+      openEditor(cat)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not create the category.')
+      setNewCat(null)
+    }
+  }
+
   return (
     <>
       <div className="page-header">
@@ -177,18 +211,32 @@ export default function Budgets() {
           ))}
         </div>
 
-        {unbudgeted.length > 0 && (
-          <div>
-            <div className="card-title">Set a budget</div>
-            <div className="filters">
-              {unbudgeted.map((c) => (
-                <button key={c.id} className="chip" onClick={() => openEditor(c)}>
-                  + {c.name}
+        <div>
+          <div className="card-title">Set a budget</div>
+          <div className="filters">
+            {unbudgeted.map((c) => (
+              <button key={c.id} className="chip" onClick={() => openEditor(c)}>
+                + {c.name}
+              </button>
+            ))}
+            {newCat === null ? (
+              <button className="chip" onClick={() => setNewCat('')}>+ New category</button>
+            ) : (
+              <form onSubmit={addCategory} style={{ display: 'inline-flex', gap: 6 }}>
+                <input
+                  autoFocus
+                  placeholder="Category name"
+                  value={newCat}
+                  onChange={(e) => setNewCat(e.target.value)}
+                  style={{ padding: '6px 10px', fontSize: 13 }}
+                />
+                <button type="submit" className="btn btn-primary" style={{ padding: '6px 12px', fontSize: 13 }}>
+                  Add
                 </button>
-              ))}
-            </div>
+              </form>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {editing && (
@@ -215,6 +263,16 @@ export default function Budgets() {
                 />
               </div>
               <div className="modal-actions">
+                {budgetRows.some((b) => b.category_id === editing.category.id) && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    style={{ marginRight: 'auto', color: '#f87171' }}
+                    onClick={removeBudget}
+                  >
+                    Remove budget
+                  </button>
+                )}
                 <button type="button" className="btn btn-ghost" onClick={() => setEditing(null)}>
                   Cancel
                 </button>

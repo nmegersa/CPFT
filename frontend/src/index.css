@@ -1307,3 +1307,21 @@ button {
   border-radius: 3px;
   display: inline-block;
 }
+
+/* Row action buttons (edit / delete) */
+.tx-actions { display: flex; gap: 4px; margin-left: 10px; }
+.tx-action {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+  transition: all 0.15s ease;
+}
+.tx-action:hover { color: var(--text); border-color: var(--border-strong); background: var(--bg-elevated); }
+.tx-action.danger:hover { color: #f87171; border-color: rgba(248,113,113,0.4); }

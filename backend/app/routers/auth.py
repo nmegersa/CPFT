@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+import time
+from collections import defaultdict
+
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -22,6 +25,23 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
+# Simple in-memory sliding-window rate limiter for auth endpoints.
+_attempts: dict = defaultdict(list)
+RATE_LIMIT = 10  # attempts
+RATE_WINDOW = 60  # seconds
+
+
+def rate_limit(request: Request) -> None:
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    window = [t for t in _attempts[ip] if now - t < RATE_WINDOW]
+    if len(window) >= RATE_LIMIT:
+        raise HTTPException(
+            status_code=429, detail="Too many attempts. Please wait a minute and try again."
+        )
+    window.append(now)
+    _attempts[ip] = window
+
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
@@ -37,7 +57,8 @@ def get_current_user(
     return user
 
 
-@router.post("/signup", response_model=AuthResponse, status_code=201)
+@router.post("/signup", response_model=AuthResponse, status_code=201,
+             dependencies=[Depends(rate_limit)])
 def signup(data: SignupRequest, db: Session = Depends(get_db)):
     try:
         user, token = auth_service.signup(db, data)
@@ -46,7 +67,7 @@ def signup(data: SignupRequest, db: Session = Depends(get_db)):
     return AuthResponse(access_token=token, user=UserOut.model_validate(user))
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/login", response_model=AuthResponse, dependencies=[Depends(rate_limit)])
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     try:
         user, token = auth_service.login(db, data)
@@ -55,7 +76,8 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     return AuthResponse(access_token=token, user=UserOut.model_validate(user))
 
 
-@router.post("/forgot-password", response_model=MessageResponse)
+@router.post("/forgot-password", response_model=MessageResponse,
+             dependencies=[Depends(rate_limit)])
 def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
     auth_service.forgot_password(db, data.email)
     # Always the same response — never reveal whether an account exists.

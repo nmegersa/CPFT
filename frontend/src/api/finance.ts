@@ -1,5 +1,7 @@
 import { request, tokenStore } from './auth'
 
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
 export interface Account {
   id: string
   account_name: string
@@ -44,8 +46,77 @@ export const financeApi = {
       headers: authed(),
       body: JSON.stringify(data),
     }),
+  updateAccount: (
+    id: string,
+    data: { account_name?: string; current_balance?: number; is_active?: boolean },
+  ) =>
+    request<Account>(`/accounts/${id}`, {
+      method: 'PATCH',
+      headers: authed(),
+      body: JSON.stringify(data),
+    }),
   categories: () => request<Category[]>('/categories', { headers: authed() }),
-  transactions: () => request<Tx[]>('/transactions', { headers: authed() }),
+  createCategory: (data: { name: string; color?: string }) =>
+    request<Category>('/categories', {
+      method: 'POST',
+      headers: authed(),
+      body: JSON.stringify(data),
+    }),
+  transactions: (opts?: { search?: string; limit?: number; offset?: number }) => {
+    const p = new URLSearchParams()
+    if (opts?.search) p.set('search', opts.search)
+    if (opts?.limit) p.set('limit', String(opts.limit))
+    if (opts?.offset) p.set('offset', String(opts.offset))
+    const qs = p.toString()
+    return request<Tx[]>(`/transactions${qs ? `?${qs}` : ''}`, { headers: authed() })
+  },
+  updateTransaction: (
+    id: string,
+    data: {
+      account_id: string
+      category_id: string | null
+      transaction_type: string
+      merchant: string
+      description: string | null
+      amount: number
+      transaction_date: string
+    },
+  ) =>
+    request<Tx>(`/transactions/${id}`, {
+      method: 'PUT',
+      headers: authed(),
+      body: JSON.stringify(data),
+    }),
+  deleteTransaction: (id: string) =>
+    request<void>(`/transactions/${id}`, { method: 'DELETE', headers: authed() }),
+  exportTransactions: async () => {
+    const res = await fetch(`${API_BASE}/transactions/export`, { headers: authed() })
+    if (!res.ok) throw new Error('Export failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'cpft-transactions.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+  deleteBudget: (id: string) =>
+    request<void>(`/budgets/${id}`, { method: 'DELETE', headers: authed() }),
+  deleteSubscription: (id: string) =>
+    request<void>(`/subscriptions/${id}`, { method: 'DELETE', headers: authed() }),
+  deleteSavingsPlan: (id: string) =>
+    request<void>(`/savings/plans/${id}`, { method: 'DELETE', headers: authed() }),
+  makeCreditPayment: (data: {
+    card_account_id: string
+    from_account_id: string
+    amount: number
+    payment_date: string
+  }) =>
+    request<Tx>('/credit/payment', {
+      method: 'POST',
+      headers: authed(),
+      body: JSON.stringify(data),
+    }),
   createTransaction: (data: {
     account_id: string
     category_id: string | null

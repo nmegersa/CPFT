@@ -62,13 +62,31 @@ By default the backend uses a local SQLite file (`cpft_dev.db`) so it starts wit
 
 ### Migrations
 
-Alembic is configured. Once you have a database set up:
+Alembic is configured and the current schema is stamped as the baseline.
+After changing any model:
 
 ```bash
 cd backend
-alembic revision --autogenerate -m "initial tables"
-alembic upgrade head
+.venv/bin/alembic revision --autogenerate -m "describe the change"
+.venv/bin/alembic upgrade head
 ```
+
+### Tests
+
+```bash
+cd backend
+.venv/bin/python -m pytest tests/
+```
+
+## Docker
+
+Run everything (Postgres + API + frontend) with one command:
+
+```bash
+docker compose up --build
+```
+
+App: http://localhost:5173 · API: http://localhost:8000
 
 ## Build Phases
 

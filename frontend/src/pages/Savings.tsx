@@ -51,6 +51,17 @@ export default function Savings() {
     0,
   )
 
+  async function remove(plan: SavingsPlan) {
+    if (!window.confirm(`Delete "${plan.name}"? Past transfers stay in your transactions.`)) return
+    try {
+      await financeApi.deleteSavingsPlan(plan.id)
+      setPlans((all) => all.filter((p) => p.id !== plan.id))
+      setToast('Savings plan deleted')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong.')
+    }
+  }
+
   async function toggle(plan: SavingsPlan) {
     try {
       const updated = await financeApi.toggleSavingsPlan(plan.id, !plan.is_active)
@@ -160,6 +171,7 @@ export default function Savings() {
                   >
                     {plan.is_active ? 'Pause' : 'Resume'}
                   </button>
+                  <button className="tx-action danger" title="Delete" onClick={() => remove(plan)}>✕</button>
                 </div>
               </div>
             </div>

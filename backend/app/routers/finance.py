@@ -21,6 +21,9 @@ from app.routers.auth import get_current_user
 from app.schemas.finance import (
     AccountCreate,
     AccountOut,
+    AccountUpdate,
+    CategoryCreate,
+    CreditPaymentCreate,
     BudgetOut,
     BudgetSet,
     CategoryOut,
@@ -172,6 +175,9 @@ def fast_forward(d: date, cycle: str) -> date:
 
 @router.get("/accounts", response_model=list[AccountOut])
 def list_accounts(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Accounts are fetched by every page, so catch up recurring activity here.
+    process_subscriptions(db, user)
+    process_savings_plans(db, user)
     return db.execute(
         select(FinancialAccount)
         .where(FinancialAccount.user_id == user.id, FinancialAccount.is_active)
@@ -202,6 +208,28 @@ def create_account(
     return account
 
 
+@router.patch("/accounts/{account_id}", response_model=AccountOut)
+def update_account(
+    account_id: str,
+    data: AccountUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    account = db.get(FinancialAccount, account_id)
+    if account is None or account.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Account not found.")
+    if data.account_name is not None:
+        account.account_name = data.account_name
+    if data.current_balance is not None:
+        account.current_balance = data.current_balance
+        sync_credit_profile(db, account)
+    if data.is_active is not None:
+        account.is_active = data.is_active
+    db.commit()
+    db.refresh(account)
+    return account
+
+
 @router.get("/categories", response_model=list[CategoryOut])
 def list_categories(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     cats = db.execute(
@@ -218,13 +246,74 @@ def list_categories(user: User = Depends(get_current_user), db: Session = Depend
     return cats
 
 
+@router.post("/categories", response_model=CategoryOut, status_code=201)
+def create_category(
+    data: CategoryCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    exists = db.execute(
+        select(Category).where(Category.user_id == user.id, Category.name == data.name)
+    ).scalar_one_or_none()
+    if exists:
+        raise HTTPException(status_code=409, detail="A category with that name already exists.")
+    cat = Category(user_id=user.id, is_default=False, **data.model_dump())
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+    return cat
+
+
 @router.get("/transactions", response_model=list[TransactionOut])
-def list_transactions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.execute(
+def list_transactions(
+    search: str = "",
+    limit: int = 0,
+    offset: int = 0,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    q = (
         select(Transaction)
         .where(Transaction.user_id == user.id)
         .order_by(Transaction.transaction_date.desc(), Transaction.created_at.desc())
-    ).scalars().all()
+    )
+    if search:
+        like = f"%{search}%"
+        q = q.where(Transaction.merchant.ilike(like) | Transaction.description.ilike(like))
+    if offset:
+        q = q.offset(offset)
+    if limit:
+        q = q.limit(limit)
+    return db.execute(q).scalars().all()
+
+
+@router.get("/transactions/export")
+def export_transactions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Download all transactions as CSV."""
+    import csv
+    import io
+
+    from fastapi.responses import StreamingResponse
+
+    rows = db.execute(
+        select(Transaction, FinancialAccount.account_name, Category.name)
+        .join(FinancialAccount, Transaction.account_id == FinancialAccount.id)
+        .outerjoin(Category, Transaction.category_id == Category.id)
+        .where(Transaction.user_id == user.id)
+        .order_by(Transaction.transaction_date.desc())
+    ).all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["date", "merchant", "type", "amount", "account", "category", "description"])
+    for tx, acc_name, cat_name in rows:
+        w.writerow([tx.transaction_date, tx.merchant, tx.transaction_type, tx.amount,
+                    acc_name, cat_name or "", tx.description or ""])
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=cpft-transactions.csv"},
+    )
 
 
 @router.post("/transactions", response_model=TransactionOut, status_code=201)
@@ -252,6 +341,65 @@ def create_transaction(
     return tx
 
 
+def apply_tx_to_balance(db: Session, tx: Transaction, sign: int) -> None:
+    """Apply (+1) or reverse (-1) a transaction's effect on its account balance."""
+    account = db.get(FinancialAccount, tx.account_id)
+    if account:
+        delta = balance_delta(account.account_type, tx.transaction_type, tx.amount)
+        account.current_balance = (account.current_balance or Decimal("0")) + sign * delta
+        sync_credit_profile(db, account)
+
+
+@router.put("/transactions/{tx_id}", response_model=TransactionOut)
+def update_transaction(
+    tx_id: str,
+    data: TransactionCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    tx = db.get(Transaction, tx_id)
+    if tx is None or tx.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Transaction not found.")
+    if tx.transaction_type in ("transfer", "credit_card_payment"):
+        raise HTTPException(
+            status_code=400,
+            detail="Transfers and card payments can't be edited; adjust balances on the Accounts page instead.",
+        )
+    account = db.get(FinancialAccount, data.account_id)
+    if account is None or account.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Account not found.")
+    if data.category_id:
+        cat = db.get(Category, data.category_id)
+        if cat is None or cat.user_id != user.id:
+            raise HTTPException(status_code=404, detail="Category not found.")
+    apply_tx_to_balance(db, tx, -1)  # undo old effect
+    for field, value in data.model_dump().items():
+        setattr(tx, field, value)
+    apply_tx_to_balance(db, tx, +1)  # apply new effect
+    db.commit()
+    db.refresh(tx)
+    return tx
+
+
+@router.delete("/transactions/{tx_id}", status_code=204)
+def delete_transaction(
+    tx_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    tx = db.get(Transaction, tx_id)
+    if tx is None or tx.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Transaction not found.")
+    if tx.transaction_type in ("transfer", "credit_card_payment"):
+        raise HTTPException(
+            status_code=400,
+            detail="Transfers and card payments can't be deleted; adjust balances on the Accounts page instead.",
+        )
+    apply_tx_to_balance(db, tx, -1)
+    db.delete(tx)
+    db.commit()
+
+
 @router.get("/budgets", response_model=list[BudgetOut])
 def list_budgets(
     month: int,
@@ -259,6 +407,28 @@ def list_budgets(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    rows = db.execute(
+        select(Budget).where(
+            Budget.user_id == user.id, Budget.month == month, Budget.year == year
+        )
+    ).scalars().all()
+    if rows or (year, month) < (date.today().year, date.today().month):
+        return rows
+    # Roll forward: copy limits from the most recent budgeted month.
+    prior = db.execute(
+        select(Budget).where(
+            Budget.user_id == user.id,
+            (Budget.year * 12 + Budget.month) < (year * 12 + month),
+        )
+    ).scalars().all()
+    if not prior:
+        return []
+    latest = max((b.year, b.month) for b in prior)
+    for b in prior:
+        if (b.year, b.month) == latest:
+            db.add(Budget(user_id=user.id, category_id=b.category_id,
+                          month=month, year=year, limit_amount=b.limit_amount))
+    db.commit()
     return db.execute(
         select(Budget).where(
             Budget.user_id == user.id, Budget.month == month, Budget.year == year
@@ -292,6 +462,19 @@ def set_budget(
     db.commit()
     db.refresh(budget)
     return budget
+
+
+@router.delete("/budgets/{budget_id}", status_code=204)
+def delete_budget(
+    budget_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    b = db.get(Budget, budget_id)
+    if b is None or b.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Budget not found.")
+    db.delete(b)
+    db.commit()
 
 
 @router.get("/subscriptions", response_model=list[SubscriptionOut])
@@ -343,6 +526,19 @@ def toggle_subscription(
     return sub
 
 
+@router.delete("/subscriptions/{sub_id}", status_code=204)
+def delete_subscription(
+    sub_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    sub = db.get(Subscription, sub_id)
+    if sub is None or sub.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Subscription not found.")
+    db.delete(sub)
+    db.commit()
+
+
 @router.get("/savings/plans", response_model=list[SavingsPlanOut])
 def list_savings_plans(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     process_savings_plans(db, user)
@@ -388,6 +584,56 @@ def toggle_savings_plan(
     db.commit()
     db.refresh(plan)
     return plan
+
+
+@router.delete("/savings/plans/{plan_id}", status_code=204)
+def delete_savings_plan(
+    plan_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    plan = db.get(SavingsPlan, plan_id)
+    if plan is None or plan.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Savings plan not found.")
+    db.delete(plan)
+    db.commit()
+
+
+@router.post("/credit/payment", response_model=TransactionOut, status_code=201)
+def make_credit_payment(
+    data: CreditPaymentCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Pay down a credit card from a bank account."""
+    card = db.get(FinancialAccount, data.card_account_id)
+    if card is None or card.user_id != user.id or card.account_type != "credit_card":
+        raise HTTPException(status_code=404, detail="Credit card account not found.")
+    src = db.get(FinancialAccount, data.from_account_id)
+    if src is None or src.user_id != user.id or src.account_type == "credit_card":
+        raise HTTPException(status_code=404, detail="Funding account not found.")
+    pay_cat = db.execute(
+        select(Category).where(Category.user_id == user.id,
+                               Category.name == "Credit Card Payment")
+    ).scalar_one_or_none()
+    tx = Transaction(
+        user_id=user.id,
+        account_id=card.id,
+        category_id=pay_cat.id if pay_cat else None,
+        transaction_type="credit_card_payment",
+        merchant=f"Payment from {src.account_name}",
+        description="Credit card payment",
+        amount=data.amount,
+        transaction_date=data.payment_date,
+        source="manual",
+    )
+    card.current_balance = (card.current_balance or Decimal("0")) - data.amount
+    src.current_balance = (src.current_balance or Decimal("0")) - data.amount
+    sync_credit_profile(db, card)
+    db.add(tx)
+    db.commit()
+    db.refresh(tx)
+    return tx
 
 
 @router.get("/credit/profiles", response_model=list[CreditProfileOut])

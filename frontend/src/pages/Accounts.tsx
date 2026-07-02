@@ -19,9 +19,43 @@ export const typeLabel = (v: string) =>
 export default function Accounts() {
   const [accounts, setAccounts] = useState<Account[]>([])
   const [form, setForm] = useState({ name: '', type: 'checking', balance: '', creditLimit: '' })
+  const [editing, setEditing] = useState<{ id: string; name: string; balance: string } | null>(null)
   const [error, setError] = useState('')
+  const [editError, setEditError] = useState('')
   const [toast, setToast] = useState('')
   const [saving, setSaving] = useState(false)
+
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editing) return
+    setEditError('')
+    const balance = parseFloat(editing.balance)
+    if (!editing.name.trim()) return setEditError('Give the account a name.')
+    if (isNaN(balance)) return setEditError('Enter a valid balance.')
+    try {
+      const acc = await financeApi.updateAccount(editing.id, {
+        account_name: editing.name.trim(),
+        current_balance: balance,
+      })
+      setAccounts((all) => all.map((a) => (a.id === acc.id ? acc : a)))
+      setEditing(null)
+      setToast('Account updated')
+    } catch (err) {
+      setEditError(err instanceof ApiError ? err.message : 'Something went wrong.')
+    }
+  }
+
+  async function closeAccount(a: Account) {
+    if (!window.confirm(`Close "${a.account_name}"? Its transactions are kept, but it will no longer appear.`))
+      return
+    try {
+      await financeApi.updateAccount(a.id, { is_active: false })
+      setAccounts((all) => all.filter((x) => x.id !== a.id))
+      setToast('Account closed')
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Something went wrong.')
+    }
+  }
 
   useEffect(() => {
     financeApi.accounts().then(setAccounts).catch(() => setError('Could not load accounts.'))
@@ -146,12 +180,62 @@ export default function Accounts() {
                       <div className="list-sub" style={{ textAlign: 'right' }}>owed</div>
                     )}
                   </div>
+                  <div className="tx-actions">
+                    <button
+                      className="tx-action"
+                      title="Edit"
+                      onClick={() => {
+                        setEditError('')
+                        setEditing({ id: a.id, name: a.account_name, balance: String(a.current_balance) })
+                      }}
+                    >
+                      ✎
+                    </button>
+                    <button className="tx-action danger" title="Close account" onClick={() => closeAccount(a)}>
+                      ✕
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {editing && (
+        <div className="modal-overlay" onClick={() => setEditing(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Edit account</h2>
+            {editError && <div className="form-alert error">{editError}</div>}
+            <form onSubmit={saveEdit} noValidate>
+              <div className="field">
+                <label htmlFor="editName">Account name</label>
+                <input
+                  id="editName"
+                  value={editing.name}
+                  onChange={(e) => setEditing((ed) => (ed ? { ...ed, name: e.target.value } : ed))}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="editBalance">Balance (correct it if it drifted)</label>
+                <input
+                  id="editBalance"
+                  type="number"
+                  step="0.01"
+                  value={editing.balance}
+                  onChange={(e) => setEditing((ed) => (ed ? { ...ed, balance: e.target.value } : ed))}
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setEditing(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {toast && <Toast message={toast} onClose={() => setToast('')} />}
     </>
