@@ -74,7 +74,7 @@ export default function Dashboard() {
           <div className="card">
             <div className="card-title">
               Budgets
-              <Link to="/budgets">View all</Link>
+              <Link to="/app/budgets">View all</Link>
             </div>
             {topBudgets.map((b) => {
               const category = getCategory(b.categoryId)
@@ -94,7 +94,7 @@ export default function Dashboard() {
             <div className="card">
               <div className="card-title">
                 Credit Health
-                <Link to="/credit">Simulator</Link>
+                <Link to="/app/credit">Simulator</Link>
               </div>
               <div className="ring-wrap">
                 <UtilizationRing ratio={utilization} />
@@ -133,7 +133,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="card-title">
             Recent Transactions
-            <Link to="/transactions">View all</Link>
+            <Link to="/app/transactions">View all</Link>
           </div>
           {transactions.slice(0, 6).map((tx) => (
             <TransactionRow key={tx.id} tx={tx} />

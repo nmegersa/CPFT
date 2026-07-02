@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.database import engine
+from app.models import Base
+from app.routers import auth
+
 app = FastAPI(
     title="CPFT API",
     description="College Personal Finances Tracker — personal finance and credit health API",
@@ -14,6 +18,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.include_router(auth.router)
+
+
+@app.on_event("startup")
+def create_tables():
+    # Dev convenience: create tables directly. Use Alembic migrations
+    # once the schema stabilizes / for Postgres.
+    Base.metadata.create_all(bind=engine)
 
 
 @app.get("/health")

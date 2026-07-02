@@ -12,6 +12,8 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     first_name: Mapped[Optional[str]] = mapped_column(String(100))
     last_name: Mapped[Optional[str]] = mapped_column(String(100))
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    # student | worker_employee | intern | self_employed | unemployed | other
+    occupation: Mapped[Optional[str]] = mapped_column(String(50))
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
 
     financial_accounts = relationship(
@@ -40,4 +42,7 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     alerts = relationship(
         "Alert", back_populates="user", cascade="all, delete-orphan"
+    )
+    password_reset_tokens = relationship(
+        "PasswordResetToken", back_populates="user", cascade="all, delete-orphan"
     )

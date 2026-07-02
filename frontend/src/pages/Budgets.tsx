@@ -50,18 +50,18 @@ export default function Budgets() {
           />
         </div>
 
-        <div className="card">
-          <div className="card-title">Spending limits by category</div>
+        <div className="grid budget-grid">
           {sorted.map((b) => {
             const category = getCategory(b.categoryId)
             return (
-              <BudgetBar
-                key={b.id}
-                name={category?.name ?? 'Unknown'}
-                color={category?.color ?? '#64748b'}
-                spent={spent.get(b.categoryId) ?? 0}
-                limit={b.limitAmount}
-              />
+              <div className="card budget-card" key={b.id}>
+                <BudgetBar
+                  name={category?.name ?? 'Unknown'}
+                  color={category?.color ?? '#64748b'}
+                  spent={spent.get(b.categoryId) ?? 0}
+                  limit={b.limitAmount}
+                />
+              </div>
             )
           })}
         </div>

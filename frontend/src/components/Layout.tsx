@@ -1,12 +1,23 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { CardIcon, ChartIcon, HomeIcon, ListIcon, LogoIcon, RepeatIcon } from './icons'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { tokenStore } from '../api/auth'
+import {
+  CardIcon,
+  ChartIcon,
+  HomeIcon,
+  ListIcon,
+  LogoIcon,
+  LogoutIcon,
+  RepeatIcon,
+  UserIcon,
+} from './icons'
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: HomeIcon, end: true },
-  { to: '/budgets', label: 'Budgets', icon: ChartIcon },
-  { to: '/transactions', label: 'Transactions', icon: ListIcon },
-  { to: '/credit', label: 'Credit', icon: CardIcon },
-  { to: '/subscriptions', label: 'Subscriptions', icon: RepeatIcon },
+  { to: '/app', label: 'Dashboard', icon: HomeIcon, end: true },
+  { to: '/app/budgets', label: 'Budgets', icon: ChartIcon },
+  { to: '/app/transactions', label: 'Transactions', icon: ListIcon },
+  { to: '/app/credit', label: 'Credit', icon: CardIcon },
+  { to: '/app/subscriptions', label: 'Subscriptions', icon: RepeatIcon },
+  { to: '/app/profile', label: 'Profile', icon: UserIcon },
 ]
 
 function NavLinks({ iconSize }: { iconSize: number }) {
@@ -28,6 +39,13 @@ function NavLinks({ iconSize }: { iconSize: number }) {
 }
 
 export default function Layout() {
+  const navigate = useNavigate()
+
+  function handleLogout() {
+    tokenStore.clear()
+    navigate('/login')
+  }
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -41,6 +59,10 @@ export default function Layout() {
           </div>
         </div>
         <NavLinks iconSize={19} />
+        <button className="nav-link logout-btn" onClick={handleLogout}>
+          <LogoutIcon size={19} />
+          <span>Log Out</span>
+        </button>
       </aside>
 
       <main className="main">
