@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../api/auth'
 import { financeApi, type Account, type Category, type Tx } from '../api/finance'
+import DateField from '../components/DateField'
 import Toast from '../components/Toast'
-import { formatCurrency, formatDate } from '../utils/format'
+import TransactionListItem from '../components/TransactionListItem'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -112,34 +113,14 @@ export default function Transactions() {
       {filtered.length === 0 ? (
         <div className="card empty">No transactions yet.</div>
       ) : (
-        filtered.map((tx) => {
-          const cat = tx.category_id ? catById.get(tx.category_id) : undefined
-          const acc = accById.get(tx.account_id)
-          const isIncome = tx.transaction_type === 'income' || tx.transaction_type === 'refund'
-          const color = cat?.color ?? '#64748b'
-          return (
-            <div className="row-card" key={tx.id}>
-              <div className="list-item">
-                <div className="list-icon" style={{ background: `${color}22`, color }}>
-                  {(cat?.name ?? tx.merchant).charAt(0)}
-                </div>
-                <div className="list-body">
-                  <div className="list-title">{tx.merchant}</div>
-                  <div className="list-sub">
-                    {[cat?.name, acc?.account_name, formatDate(tx.transaction_date)]
-                      .filter(Boolean)
-                      .join(' · ')}
-                    {tx.description ? ` — ${tx.description}` : ''}
-                  </div>
-                </div>
-                <div className={`list-amount${isIncome ? ' income' : ''}`}>
-                  {isIncome ? '+' : '−'}
-                  {formatCurrency(Number(tx.amount))}
-                </div>
-              </div>
-            </div>
-          )
-        })
+        filtered.map((tx) => (
+          <TransactionListItem
+            key={tx.id}
+            tx={tx}
+            category={tx.category_id ? catById.get(tx.category_id) : null}
+            accountName={accById.get(tx.account_id)?.account_name}
+          />
+        ))
       )}
 
       {showModal && (
@@ -169,14 +150,11 @@ export default function Transactions() {
                     onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
                   />
                 </div>
-                <div className="field">
-                  <label>Date</label>
-                  <input
-                    type="date"
-                    value={form.date}
-                    onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                  />
-                </div>
+                <DateField
+                  id="tx-date"
+                  value={form.date}
+                  onChange={(date) => setForm((f) => ({ ...f, date }))}
+                />
               </div>
               <div className="form-row">
                 <div className="field">

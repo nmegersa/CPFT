@@ -604,7 +604,8 @@ button {
 }
 
 .field select,
-.field input[type='number'] {
+.field input[type='number'],
+.field input[type='date'] {
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   color: var(--text);
@@ -1158,7 +1159,8 @@ button {
 
 .field input[type='text'],
 .field input[type='email'],
-.field input[type='password'] {
+.field input[type='password'],
+.field input[type='date'] {
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   color: var(--text);
@@ -1221,4 +1223,50 @@ button {
 .forgot-link {
   font-size: 12.5px;
   float: right;
+}
+
+/* ---------- Date field ---------- */
+
+.date-field .date-input-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.date-field .date-input {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 14.5px;
+  font-family: inherit;
+  outline: none;
+  color-scheme: dark;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.date-field .date-input:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.date-field .date-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.date-field .date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  filter: invert(0.85) sepia(0.3) saturate(4) hue-rotate(100deg);
+}
+
+.date-field .date-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.date-field .date-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
 }

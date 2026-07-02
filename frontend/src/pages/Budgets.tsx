@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import BudgetBar from '../components/BudgetBar'
 import StatCard from '../components/StatCard'
 import { financeApi, type Account, type Category, type Tx } from '../api/finance'
-import { budgetLevel, formatCurrency, formatDate } from '../utils/format'
+import TransactionListItem from '../components/TransactionListItem'
+import { budgetLevel, formatCurrency } from '../utils/format'
 
 // Monthly limits by category name (until budgets are user-editable).
 const LIMITS: Record<string, number> = {
@@ -126,26 +127,12 @@ export default function Budgets() {
               <div className="empty">No transactions in this category this month.</div>
             ) : (
               selectedTxs.map((tx) => (
-                <div className="list-item" key={tx.id}>
-                  <div
-                    className="list-icon"
-                    style={{
-                      background: `${selected.color ?? '#64748b'}22`,
-                      color: selected.color ?? '#64748b',
-                    }}
-                  >
-                    {tx.merchant.charAt(0)}
-                  </div>
-                  <div className="list-body">
-                    <div className="list-title">{tx.merchant}</div>
-                    <div className="list-sub">
-                      {[accById.get(tx.account_id)?.account_name, formatDate(tx.transaction_date)]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </div>
-                  </div>
-                  <div className="list-amount">−{formatCurrency(Number(tx.amount))}</div>
-                </div>
+                <TransactionListItem
+                  key={tx.id}
+                  tx={tx}
+                  category={selected}
+                  accountName={accById.get(tx.account_id)?.account_name}
+                />
               ))
             )}
             <div className="modal-actions">

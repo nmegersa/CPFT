@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../api/auth'
 import { financeApi, type Account, type Category, type Tx } from '../api/finance'
+import DateField from '../components/DateField'
+import TransactionListItem from '../components/TransactionListItem'
 import Toast from '../components/Toast'
-import { formatCurrency, formatDate } from '../utils/format'
+import { formatCurrency } from '../utils/format'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -105,14 +107,11 @@ export default function Payroll() {
                   onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
                 />
               </div>
-              <div className="field">
-                <label>Date</label>
-                <input
-                  type="date"
-                  value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                />
-              </div>
+              <DateField
+                id="payroll-date"
+                value={form.date}
+                onChange={(date) => setForm((f) => ({ ...f, date }))}
+              />
             </div>
             <div className="field">
               <label>Deposit to</label>
@@ -146,22 +145,12 @@ export default function Payroll() {
             <div className="card empty">No payments recorded yet.</div>
           ) : (
             payments.map((tx) => (
-              <div className="row-card" key={tx.id}>
-                <div className="list-item">
-                  <div className="list-icon" style={{ background: 'rgba(16,185,129,0.14)', color: 'var(--accent)' }}>
-                    $
-                  </div>
-                  <div className="list-body">
-                    <div className="list-title">{tx.merchant}</div>
-                    <div className="list-sub">
-                      {[accById.get(tx.account_id)?.account_name, formatDate(tx.transaction_date)]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </div>
-                  </div>
-                  <div className="list-amount income">+{formatCurrency(Number(tx.amount))}</div>
-                </div>
-              </div>
+              <TransactionListItem
+                key={tx.id}
+                tx={tx}
+                category={{ name: 'Income', color: '#10b981' }}
+                accountName={accById.get(tx.account_id)?.account_name}
+              />
             ))
           )}
         </div>

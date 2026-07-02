@@ -1,143 +1,158 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import BudgetBar from '../components/BudgetBar'
 import StatCard from '../components/StatCard'
-import TransactionRow from '../components/TransactionRow'
 import UtilizationRing from '../components/UtilizationRing'
-import {
-  accounts,
-  budgets,
-  creditProfile,
-  getCategory,
-  insights,
-  spentByCategory,
-  totalExpenses,
-  totalIncome,
-  transactions,
-} from '../data/mockData'
-import {
-  formatCurrency,
-  utilizationLabels,
-  utilizationLevel,
-} from '../utils/format'
+import { financeApi, type Account, type Category, type CreditProfile, type Tx } from '../api/finance'
+import TransactionListItem from '../components/TransactionListItem'
+import { formatCurrency, utilizationLabels, utilizationLevel } from '../utils/format'
+
+const LIMITS: Record<string, number> = {
+  Rent: 850, Food: 300, School: 200, Shopping: 150, Gas: 120, Entertainment: 100, Subscriptions: 60,
+}
+
+function daysAgo(n: number) {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d
+}
 
 export default function Dashboard() {
-  const spent = spentByCategory()
-  const income = totalIncome()
-  const expenses = totalExpenses()
-  const cashBalance = accounts
-    .filter((a) => a.accountType !== 'credit_card')
-    .reduce((sum, a) => sum + a.currentBalance, 0)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [txs, setTxs] = useState<Tx[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [profiles, setProfiles] = useState<CreditProfile[]>([])
 
-  const utilization = creditProfile.currentBalance / creditProfile.creditLimit
+  useEffect(() => {
+    Promise.all([
+      financeApi.accounts(),
+      financeApi.transactions(),
+      financeApi.categories(),
+      financeApi.creditProfiles(),
+    ]).then(([a, t, c, p]) => {
+      setAccounts(a)
+      setTxs(t)
+      setCategories(c)
+      setProfiles(p)
+    })
+  }, [])
+
+  const since = daysAgo(30)
+  const recent = txs.filter((t) => new Date(t.transaction_date + 'T00:00:00') >= since)
+
+  const income = recent
+    .filter((t) => t.transaction_type === 'income' || t.transaction_type === 'refund')
+    .reduce((s, t) => s + Number(t.amount), 0)
+  const expenses = recent
+    .filter((t) => t.transaction_type === 'expense' || t.transaction_type === 'fee')
+    .reduce((s, t) => s + Number(t.amount), 0)
+
+  const assets = accounts
+    .filter((a) => a.account_type !== 'credit_card')
+    .reduce((s, a) => s + Number(a.current_balance), 0)
+  const ccDebt = accounts
+    .filter((a) => a.account_type === 'credit_card')
+    .reduce((s, a) => s + Number(a.current_balance), 0)
+  const totalBalance = assets - ccDebt
+
+  const totalCcBal = profiles.reduce((s, p) => s + Number(p.current_balance), 0)
+  const totalCcLimit = profiles.reduce((s, p) => s + Number(p.credit_limit), 0)
+  const utilization = totalCcLimit > 0 ? totalCcBal / totalCcLimit : 0
   const level = utilizationLevel(utilization)
 
-  const topBudgets = [...budgets]
-    .sort((a, b) => {
-      const ra = (spent.get(a.categoryId) ?? 0) / a.limitAmount
-      const rb = (spent.get(b.categoryId) ?? 0) / b.limitAmount
-      return rb - ra
+  const catById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories])
+  const accById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
+
+  const monthTxs = txs.filter((t) => {
+    const d = new Date(t.transaction_date + 'T00:00:00')
+    const n = new Date()
+    return t.transaction_type === 'expense' && d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear()
+  })
+
+  const topBudgets = Object.entries(LIMITS)
+    .map(([name, lim]) => {
+      const cat = categories.find((c) => c.name === name)
+      if (!cat) return null
+      const spent = monthTxs.filter((t) => t.category_id === cat.id).reduce((s, t) => s + Number(t.amount), 0)
+      return { cat, limit: lim, spent }
     })
+    .filter((b): b is { cat: Category; limit: number; spent: number } => b !== null)
+    .sort((a, b) => b.spent / b.limit - a.spent / a.limit)
     .slice(0, 4)
+
+  const subtitle = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
   return (
     <>
       <div className="page-header">
         <h1>Dashboard</h1>
-        <span className="subtitle">July 2026 overview</span>
+        <span className="subtitle">{subtitle} overview</span>
       </div>
 
       <div className="stack">
         <div className="grid grid-stats">
           <StatCard
             label="Total Balance"
-            value={formatCurrency(cashBalance)}
-            hint="Across checking, savings & cash"
+            value={formatCurrency(totalBalance)}
+            hint="Assets minus credit card debt"
           />
-          <StatCard
-            label="Income (30d)"
-            value={formatCurrency(income)}
-            tone="positive"
-          />
-          <StatCard
-            label="Spending (30d)"
-            value={formatCurrency(expenses)}
-            tone="negative"
-          />
+          <StatCard label="Income (30d)" value={formatCurrency(income)} tone="positive" />
+          <StatCard label="Spending (30d)" value={formatCurrency(expenses)} tone="negative" />
           <StatCard
             label="Credit Utilization"
-            value={`${(utilization * 100).toFixed(1)}%`}
-            hint={utilizationLabels[level]}
+            value={profiles.length ? `${(utilization * 100).toFixed(1)}%` : '—'}
+            hint={profiles.length ? utilizationLabels[level] : 'Add a credit card profile'}
           />
         </div>
 
         <div className="grid grid-2">
           <div className="card">
-            <div className="card-title">
-              Budgets
-              <Link to="/app/budgets">View all</Link>
-            </div>
-            {topBudgets.map((b) => {
-              const category = getCategory(b.categoryId)
-              return (
-                <BudgetBar
-                  key={b.id}
-                  name={category?.name ?? 'Unknown'}
-                  color={category?.color ?? '#64748b'}
-                  spent={spent.get(b.categoryId) ?? 0}
-                  limit={b.limitAmount}
-                />
-              )
-            })}
+            <div className="card-title">Budgets <Link to="/app/budgets">View all</Link></div>
+            {topBudgets.length === 0 ? (
+              <div className="empty">Add transactions to see budget progress.</div>
+            ) : (
+              topBudgets.map(({ cat, limit, spent }) => (
+                <BudgetBar key={cat.id} name={cat.name} color={cat.color ?? '#64748b'} spent={spent} limit={limit} />
+              ))
+            )}
           </div>
 
-          <div className="stack">
-            <div className="card">
-              <div className="card-title">
-                Credit Health
-                <Link to="/app/credit">Simulator</Link>
-              </div>
+          <div className="card">
+            <div className="card-title">Credit Health <Link to="/app/credit">Details</Link></div>
+            {profiles.length === 0 ? (
+              <div className="empty">Set up a credit card on Accounts or Credit.</div>
+            ) : (
               <div className="ring-wrap">
                 <UtilizationRing ratio={utilization} />
                 <div className="detail-grid" style={{ flex: 1, minWidth: 160 }}>
                   <div>
-                    <div className="detail-label">Balance</div>
-                    <div className="detail-value">
-                      {formatCurrency(creditProfile.currentBalance)}
-                    </div>
+                    <div className="detail-label">Balance owed</div>
+                    <div className="detail-value">{formatCurrency(totalCcBal)}</div>
                   </div>
                   <div>
-                    <div className="detail-label">Credit limit</div>
-                    <div className="detail-value">
-                      {formatCurrency(creditProfile.creditLimit)}
-                    </div>
+                    <div className="detail-label">Total limit</div>
+                    <div className="detail-value">{formatCurrency(totalCcLimit)}</div>
                   </div>
                 </div>
               </div>
-            </div>
-
-            <div className="card">
-              <div className="card-title">Insights</div>
-              {insights.map((ins) => (
-                <div className="insight" key={ins.id}>
-                  <div className={`insight-bar ${ins.severity}`} />
-                  <div>
-                    <h4>{ins.title}</h4>
-                    <p>{ins.message}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            )}
           </div>
         </div>
 
-        <div className="card">
-          <div className="card-title">
-            Recent Transactions
-            <Link to="/app/transactions">View all</Link>
-          </div>
-          {transactions.slice(0, 6).map((tx) => (
-            <TransactionRow key={tx.id} tx={tx} />
-          ))}
+        <div>
+          <div className="card-title">Recent Transactions <Link to="/app/transactions">View all</Link></div>
+          {txs.length === 0 ? (
+            <div className="card empty">No transactions yet.</div>
+          ) : (
+            txs.slice(0, 6).map((tx) => (
+              <TransactionListItem
+                key={tx.id}
+                tx={tx}
+                category={tx.category_id ? catById.get(tx.category_id) : null}
+                accountName={accById.get(tx.account_id)?.account_name}
+              />
+            ))
+          )}
         </div>
       </div>
     </>

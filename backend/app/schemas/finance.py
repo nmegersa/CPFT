@@ -11,6 +11,22 @@ class AccountCreate(BaseModel):
     account_type: str = Field(min_length=1, max_length=50)
     institution_name: Optional[str] = None
     current_balance: Decimal = Decimal("0")
+    credit_limit: Optional[Decimal] = Field(default=None, gt=0)
+
+
+class CreditProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    account_id: uuid.UUID
+    account_name: str
+    credit_limit: Decimal
+    current_balance: Decimal
+    utilization: Decimal
+
+
+class CreditProfileCreate(BaseModel):
+    account_id: uuid.UUID
+    credit_limit: Decimal = Field(gt=0)
 
 
 class AccountOut(BaseModel):

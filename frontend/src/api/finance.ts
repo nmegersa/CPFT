@@ -37,6 +37,7 @@ export const financeApi = {
     account_name: string
     account_type: string
     current_balance: number
+    credit_limit?: number
   }) =>
     request<Account>('/accounts', {
       method: 'POST',
@@ -59,4 +60,21 @@ export const financeApi = {
       headers: authed(),
       body: JSON.stringify(data),
     }),
+  creditProfiles: () =>
+    request<CreditProfile[]>('/credit/profiles', { headers: authed() }),
+  createCreditProfile: (accountId: string, creditLimit: number) =>
+    request<CreditProfile>('/credit/profile', {
+      method: 'POST',
+      headers: authed(),
+      body: JSON.stringify({ account_id: accountId, credit_limit: creditLimit }),
+    }),
+}
+
+export interface CreditProfile {
+  id: string
+  account_id: string
+  account_name: string
+  credit_limit: string
+  current_balance: string
+  utilization: string
 }

@@ -18,7 +18,7 @@ export const typeLabel = (v: string) =>
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [form, setForm] = useState({ name: '', type: 'checking', balance: '' })
+  const [form, setForm] = useState({ name: '', type: 'checking', balance: '', creditLimit: '' })
   const [error, setError] = useState('')
   const [toast, setToast] = useState('')
   const [saving, setSaving] = useState(false)
@@ -33,15 +33,21 @@ export default function Accounts() {
     const balance = parseFloat(form.balance || '0')
     if (!form.name.trim()) return setError('Give the account a name.')
     if (isNaN(balance)) return setError('Enter a valid balance.')
+    if (form.type === 'credit_card' && (!form.creditLimit || parseFloat(form.creditLimit) <= 0)) {
+      return setError('Credit cards need a credit limit greater than 0.')
+    }
     setSaving(true)
     try {
       const acc = await financeApi.createAccount({
         account_name: form.name.trim(),
         account_type: form.type,
         current_balance: balance,
+        ...(form.type === 'credit_card'
+          ? { credit_limit: parseFloat(form.creditLimit) }
+          : {}),
       })
       setAccounts((a) => [...a, acc])
-      setForm({ name: '', type: 'checking', balance: '' })
+      setForm({ name: '', type: 'checking', balance: '', creditLimit: '' })
       setToast('Account successfully added')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong.')
@@ -99,6 +105,20 @@ export default function Accounts() {
                 />
               </div>
             </div>
+            {form.type === 'credit_card' && (
+              <div className="field">
+                <label htmlFor="accLimit">Credit limit</label>
+                <input
+                  id="accLimit"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="1500.00"
+                  value={form.creditLimit}
+                  onChange={(e) => setForm((f) => ({ ...f, creditLimit: e.target.value }))}
+                />
+              </div>
+            )}
             <button className="btn btn-primary" type="submit" disabled={saving}>
               {saving ? 'Adding…' : 'Add account'}
             </button>

@@ -5,12 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Category, FinancialAccount, Transaction, User
+from app.models import Category, CreditProfile, FinancialAccount, Transaction, User
 from app.routers.auth import get_current_user
 from app.schemas.finance import (
     AccountCreate,
     AccountOut,
     CategoryOut,
+    CreditProfileCreate,
+    CreditProfileOut,
     TransactionCreate,
     TransactionOut,
 )
@@ -46,6 +48,16 @@ def balance_delta(account_type: str, tx_type: str, amount: Decimal) -> Decimal:
     return amount if tx_type in ("income", "refund") else -amount
 
 
+def sync_credit_profile(db: Session, account: FinancialAccount) -> None:
+    if account.account_type != "credit_card":
+        return
+    profile = db.execute(
+        select(CreditProfile).where(CreditProfile.account_id == account.id)
+    ).scalar_one_or_none()
+    if profile:
+        profile.current_balance = account.current_balance or Decimal("0")
+
+
 @router.get("/accounts", response_model=list[AccountOut])
 def list_accounts(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return db.execute(
@@ -61,8 +73,18 @@ def create_account(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    account = FinancialAccount(user_id=user.id, **data.model_dump())
+    account = FinancialAccount(user_id=user.id, **data.model_dump(exclude={"credit_limit"}))
     db.add(account)
+    db.flush()
+    if account.account_type == "credit_card" and data.credit_limit:
+        db.add(
+            CreditProfile(
+                user_id=user.id,
+                account_id=account.id,
+                credit_limit=data.credit_limit,
+                current_balance=account.current_balance or Decimal("0"),
+            )
+        )
     db.commit()
     db.refresh(account)
     return account
@@ -111,7 +133,70 @@ def create_transaction(
     account.current_balance = (account.current_balance or Decimal("0")) + balance_delta(
         account.account_type, data.transaction_type, data.amount
     )
+    sync_credit_profile(db, account)
     db.add(tx)
     db.commit()
     db.refresh(tx)
     return tx
+
+
+@router.get("/credit/profiles", response_model=list[CreditProfileOut])
+def list_credit_profiles(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rows = db.execute(
+        select(CreditProfile, FinancialAccount)
+        .join(FinancialAccount, CreditProfile.account_id == FinancialAccount.id)
+        .where(CreditProfile.user_id == user.id)
+        .order_by(FinancialAccount.created_at)
+    ).all()
+    out = []
+    for profile, account in rows:
+        bal = account.current_balance or Decimal("0")
+        if profile.current_balance != bal:
+            profile.current_balance = bal
+        limit = profile.credit_limit
+        out.append(
+            CreditProfileOut(
+                id=profile.id,
+                account_id=profile.account_id,
+                account_name=account.account_name,
+                credit_limit=limit,
+                current_balance=bal,
+                utilization=bal / limit if limit > 0 else Decimal("0"),
+            )
+        )
+    db.commit()
+    return out
+
+
+@router.post("/credit/profile", response_model=CreditProfileOut, status_code=201)
+def create_credit_profile(
+    data: CreditProfileCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    account = db.get(FinancialAccount, data.account_id)
+    if account is None or account.user_id != user.id or account.account_type != "credit_card":
+        raise HTTPException(status_code=404, detail="Credit card account not found.")
+    existing = db.execute(
+        select(CreditProfile).where(CreditProfile.account_id == account.id)
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="This card already has a credit profile.")
+    profile = CreditProfile(
+        user_id=user.id,
+        account_id=account.id,
+        credit_limit=data.credit_limit,
+        current_balance=account.current_balance or Decimal("0"),
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    bal = profile.current_balance
+    return CreditProfileOut(
+        id=profile.id,
+        account_id=profile.account_id,
+        account_name=account.account_name,
+        credit_limit=profile.credit_limit,
+        current_balance=bal,
+        utilization=bal / profile.credit_limit,
+    )
