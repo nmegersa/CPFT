@@ -106,9 +106,10 @@ def login(db: Session, data: LoginRequest) -> Tuple[User, str]:
     # TODO: add rate limiting / lockout on repeated failures before production.
     email = data.email.lower().strip()
     user = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
-    # Same generic message whether the email or the password is wrong.
-    if user is None or not verify_password(data.password, user.password_hash):
-        raise AuthError("Invalid email or password.", status_code=401)
+    if user is None:
+        raise AuthError("There is no account under this email.", status_code=401)
+    if not verify_password(data.password, user.password_hash):
+        raise AuthError("That password is incorrect.", status_code=401)
     return user, create_access_token(str(user.id))
 
 
