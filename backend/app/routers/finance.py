@@ -1,3 +1,5 @@
+import calendar
+from datetime import date, timedelta
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -5,7 +7,16 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Budget, Category, CreditProfile, FinancialAccount, Transaction, User
+from app.models import (
+    Budget,
+    Category,
+    CreditProfile,
+    FinancialAccount,
+    SavingsPlan,
+    Subscription,
+    Transaction,
+    User,
+)
 from app.routers.auth import get_current_user
 from app.schemas.finance import (
     AccountCreate,
@@ -15,6 +26,11 @@ from app.schemas.finance import (
     CategoryOut,
     CreditProfileCreate,
     CreditProfileOut,
+    SavingsPlanCreate,
+    SavingsPlanOut,
+    SubscriptionCreate,
+    SubscriptionOut,
+    ToggleActive,
     TransactionCreate,
     TransactionOut,
 )
@@ -58,6 +74,100 @@ def sync_credit_profile(db: Session, account: FinancialAccount) -> None:
     ).scalar_one_or_none()
     if profile:
         profile.current_balance = account.current_balance or Decimal("0")
+
+
+def advance_date(d: date, cycle: str) -> date:
+    """Next occurrence: +7 days for weekly, same day next month (clamped) for monthly."""
+    if cycle == "weekly":
+        return d + timedelta(days=7)
+    y, m = (d.year + 1, 1) if d.month == 12 else (d.year, d.month + 1)
+    return date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
+
+
+def process_subscriptions(db: Session, user: User) -> bool:
+    """Record transactions for any active subscriptions whose payment date has passed."""
+    today = date.today()
+    subs = db.execute(
+        select(Subscription).where(
+            Subscription.user_id == user.id,
+            Subscription.is_active,
+            Subscription.next_payment_date <= today,
+        )
+    ).scalars().all()
+    changed = False
+    for sub in subs:
+        account = db.get(FinancialAccount, sub.account_id) if sub.account_id else None
+        while sub.next_payment_date and sub.next_payment_date <= today:
+            if account:
+                db.add(Transaction(
+                    user_id=user.id,
+                    account_id=account.id,
+                    category_id=sub.category_id,
+                    transaction_type="expense",
+                    merchant=sub.name,
+                    description="Subscription payment",
+                    amount=sub.amount,
+                    transaction_date=sub.next_payment_date,
+                    is_recurring=True,
+                    source="system_generated",
+                ))
+                account.current_balance = (account.current_balance or Decimal("0")) + \
+                    balance_delta(account.account_type, "expense", sub.amount)
+                changed = True
+            sub.next_payment_date = advance_date(sub.next_payment_date, sub.billing_cycle)
+        if account:
+            sync_credit_profile(db, account)
+    if changed:
+        db.commit()
+    return changed
+
+
+def process_savings_plans(db: Session, user: User) -> bool:
+    """Run due savings transfers: move money and record a transfer transaction."""
+    today = date.today()
+    plans = db.execute(
+        select(SavingsPlan).where(
+            SavingsPlan.user_id == user.id,
+            SavingsPlan.is_active,
+            SavingsPlan.next_run_date <= today,
+        )
+    ).scalars().all()
+    savings_cat = db.execute(
+        select(Category).where(Category.user_id == user.id, Category.name == "Savings")
+    ).scalar_one_or_none()
+    changed = False
+    for plan in plans:
+        src = db.get(FinancialAccount, plan.from_account_id) if plan.from_account_id else None
+        dst = db.get(FinancialAccount, plan.to_account_id) if plan.to_account_id else None
+        while plan.next_run_date <= today:
+            if src and dst:
+                db.add(Transaction(
+                    user_id=user.id,
+                    account_id=src.id,
+                    category_id=savings_cat.id if savings_cat else None,
+                    transaction_type="transfer",
+                    merchant=plan.name,
+                    description=f"Savings transfer to {dst.account_name}",
+                    amount=plan.amount,
+                    transaction_date=plan.next_run_date,
+                    is_recurring=True,
+                    source="system_generated",
+                ))
+                src.current_balance = (src.current_balance or Decimal("0")) - plan.amount
+                dst.current_balance = (dst.current_balance or Decimal("0")) + plan.amount
+                changed = True
+            plan.next_run_date = advance_date(plan.next_run_date, plan.frequency)
+    if changed:
+        db.commit()
+    return changed
+
+
+def fast_forward(d: date, cycle: str) -> date:
+    """Skip missed occurrences (used when reactivating) so past dates aren't billed."""
+    today = date.today()
+    while d <= today:
+        d = advance_date(d, cycle)
+    return d
 
 
 @router.get("/accounts", response_model=list[AccountOut])
@@ -182,6 +292,102 @@ def set_budget(
     db.commit()
     db.refresh(budget)
     return budget
+
+
+@router.get("/subscriptions", response_model=list[SubscriptionOut])
+def list_subscriptions(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    process_subscriptions(db, user)
+    return db.execute(
+        select(Subscription).where(Subscription.user_id == user.id)
+        .order_by(Subscription.created_at)
+    ).scalars().all()
+
+
+@router.post("/subscriptions", response_model=SubscriptionOut, status_code=201)
+def create_subscription(
+    data: SubscriptionCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    account = db.get(FinancialAccount, data.account_id)
+    if account is None or account.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Payment account not found.")
+    if data.category_id:
+        cat = db.get(Category, data.category_id)
+        if cat is None or cat.user_id != user.id:
+            raise HTTPException(status_code=404, detail="Category not found.")
+    sub = Subscription(user_id=user.id, **data.model_dump())
+    db.add(sub)
+    db.commit()
+    process_subscriptions(db, user)  # bill immediately if start date is today/past
+    db.refresh(sub)
+    return sub
+
+
+@router.patch("/subscriptions/{sub_id}", response_model=SubscriptionOut)
+def toggle_subscription(
+    sub_id: str,
+    data: ToggleActive,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    sub = db.get(Subscription, sub_id)
+    if sub is None or sub.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Subscription not found.")
+    if data.is_active and not sub.is_active and sub.next_payment_date:
+        # Skip payments missed while paused instead of billing them all at once.
+        sub.next_payment_date = fast_forward(sub.next_payment_date, sub.billing_cycle)
+    sub.is_active = data.is_active
+    db.commit()
+    db.refresh(sub)
+    return sub
+
+
+@router.get("/savings/plans", response_model=list[SavingsPlanOut])
+def list_savings_plans(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    process_savings_plans(db, user)
+    return db.execute(
+        select(SavingsPlan).where(SavingsPlan.user_id == user.id)
+        .order_by(SavingsPlan.created_at)
+    ).scalars().all()
+
+
+@router.post("/savings/plans", response_model=SavingsPlanOut, status_code=201)
+def create_savings_plan(
+    data: SavingsPlanCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    for acc_id, label in ((data.from_account_id, "Source"), (data.to_account_id, "Destination")):
+        acc = db.get(FinancialAccount, acc_id)
+        if acc is None or acc.user_id != user.id:
+            raise HTTPException(status_code=404, detail=f"{label} account not found.")
+    if data.from_account_id == data.to_account_id:
+        raise HTTPException(status_code=400, detail="Source and destination must differ.")
+    plan = SavingsPlan(user_id=user.id, **data.model_dump())
+    db.add(plan)
+    db.commit()
+    process_savings_plans(db, user)
+    db.refresh(plan)
+    return plan
+
+
+@router.patch("/savings/plans/{plan_id}", response_model=SavingsPlanOut)
+def toggle_savings_plan(
+    plan_id: str,
+    data: ToggleActive,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    plan = db.get(SavingsPlan, plan_id)
+    if plan is None or plan.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Savings plan not found.")
+    if data.is_active and not plan.is_active:
+        plan.next_run_date = fast_forward(plan.next_run_date, plan.frequency)
+    plan.is_active = data.is_active
+    db.commit()
+    db.refresh(plan)
+    return plan
 
 
 @router.get("/credit/profiles", response_model=list[CreditProfileOut])

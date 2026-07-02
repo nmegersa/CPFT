@@ -10,9 +10,11 @@ from app.models.credit_simulation import CreditSimulation
 from app.models.insight import Insight
 from app.models.alert import Alert
 from app.models.password_reset_token import PasswordResetToken
+from app.models.savings_plan import SavingsPlan
 
 __all__ = [
     "PasswordResetToken",
+    "SavingsPlan",
     "Base",
     "User",
     "FinancialAccount",

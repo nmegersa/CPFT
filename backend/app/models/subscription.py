@@ -20,6 +20,10 @@ class Subscription(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     category_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         Uuid, ForeignKey("categories.id", ondelete="SET NULL")
     )
+    # Payment source (checking, savings, credit card).
+    account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        Uuid, ForeignKey("financial_accounts.id", ondelete="SET NULL")
+    )
     name: Mapped[str] = mapped_column(String(150), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     # weekly | monthly | quarterly | yearly | custom

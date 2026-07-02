@@ -68,6 +68,46 @@ export const financeApi = {
       headers: authed(),
       body: JSON.stringify(data),
     }),
+  subscriptions: () => request<Sub[]>('/subscriptions', { headers: authed() }),
+  createSubscription: (data: {
+    name: string
+    amount: number
+    billing_cycle: string
+    next_payment_date: string
+    account_id: string
+    category_id: string | null
+  }) =>
+    request<Sub>('/subscriptions', {
+      method: 'POST',
+      headers: authed(),
+      body: JSON.stringify(data),
+    }),
+  toggleSubscription: (id: string, isActive: boolean) =>
+    request<Sub>(`/subscriptions/${id}`, {
+      method: 'PATCH',
+      headers: authed(),
+      body: JSON.stringify({ is_active: isActive }),
+    }),
+  savingsPlans: () => request<SavingsPlan[]>('/savings/plans', { headers: authed() }),
+  createSavingsPlan: (data: {
+    name: string
+    amount: number
+    frequency: string
+    next_run_date: string
+    from_account_id: string
+    to_account_id: string
+  }) =>
+    request<SavingsPlan>('/savings/plans', {
+      method: 'POST',
+      headers: authed(),
+      body: JSON.stringify(data),
+    }),
+  toggleSavingsPlan: (id: string, isActive: boolean) =>
+    request<SavingsPlan>(`/savings/plans/${id}`, {
+      method: 'PATCH',
+      headers: authed(),
+      body: JSON.stringify({ is_active: isActive }),
+    }),
   creditProfiles: () =>
     request<CreditProfile[]>('/credit/profiles', { headers: authed() }),
   createCreditProfile: (accountId: string, creditLimit: number) =>
@@ -84,6 +124,28 @@ export interface Budget {
   month: number
   year: number
   limit_amount: string
+}
+
+export interface Sub {
+  id: string
+  name: string
+  amount: string
+  billing_cycle: string
+  next_payment_date: string | null
+  is_active: boolean
+  account_id: string | null
+  category_id: string | null
+}
+
+export interface SavingsPlan {
+  id: string
+  name: string
+  amount: string
+  frequency: string
+  next_run_date: string
+  is_active: boolean
+  from_account_id: string | null
+  to_account_id: string | null
 }
 
 export interface CreditProfile {

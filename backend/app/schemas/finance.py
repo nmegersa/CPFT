@@ -73,6 +73,52 @@ class BudgetOut(BaseModel):
     limit_amount: Decimal
 
 
+class SubscriptionCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=150)
+    amount: Decimal = Field(gt=0)
+    billing_cycle: str = Field(pattern="^(weekly|monthly)$")
+    next_payment_date: date
+    account_id: uuid.UUID
+    category_id: Optional[uuid.UUID] = None
+
+
+class SubscriptionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    name: str
+    amount: Decimal
+    billing_cycle: str
+    next_payment_date: Optional[date]
+    is_active: bool
+    account_id: Optional[uuid.UUID]
+    category_id: Optional[uuid.UUID]
+
+
+class ToggleActive(BaseModel):
+    is_active: bool
+
+
+class SavingsPlanCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=150)
+    amount: Decimal = Field(gt=0)
+    frequency: str = Field(pattern="^(weekly|monthly)$")
+    next_run_date: date
+    from_account_id: uuid.UUID
+    to_account_id: uuid.UUID
+
+
+class SavingsPlanOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    name: str
+    amount: Decimal
+    frequency: str
+    next_run_date: date
+    is_active: bool
+    from_account_id: Optional[uuid.UUID]
+    to_account_id: Optional[uuid.UUID]
+
+
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
