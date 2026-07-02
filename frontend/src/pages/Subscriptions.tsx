@@ -31,10 +31,11 @@ export default function Subscriptions() {
           />
         </div>
 
-        <div className="card">
+        <div>
           <div className="card-title">Recurring payments</div>
           {sorted.map((sub) => (
-            <div className="list-item" key={sub.id}>
+            <div className="row-card" key={sub.id}>
+            <div className="list-item">
               <div
                 className="list-icon"
                 style={{
@@ -56,6 +57,7 @@ export default function Subscriptions() {
                   {sub.isActive ? 'Active' : 'Paused'}
                 </span>
               </div>
+            </div>
             </div>
           ))}
         </div>

@@ -39,13 +39,15 @@ export default function Transactions() {
         ))}
       </div>
 
-      <div className="card">
-        {filtered.length === 0 ? (
-          <div className="empty">No transactions in this category.</div>
-        ) : (
-          filtered.map((tx) => <TransactionRow key={tx.id} tx={tx} />)
-        )}
-      </div>
+      {filtered.length === 0 ? (
+        <div className="card empty">No transactions in this category.</div>
+      ) : (
+        filtered.map((tx) => (
+          <div className="row-card" key={tx.id}>
+            <TransactionRow tx={tx} />
+          </div>
+        ))
+      )}
     </>
   )
 }

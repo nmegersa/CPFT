@@ -127,7 +127,7 @@ export default function Profile() {
               </div>
             </div>
             <div>
-              <div className="detail-label">Member since</div>
+              <div className="detail-label">Account created</div>
               <div className="detail-value">{joined}</div>
             </div>
           </div>

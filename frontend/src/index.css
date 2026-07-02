@@ -485,6 +485,31 @@ button {
 
 .list-amount.income { color: var(--good); }
 
+/* Compact horizontal row cards (transactions, subscriptions) */
+.row-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px 16px;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+}
+
+.row-card + .row-card {
+  margin-top: 10px;
+}
+
+.row-card .list-item {
+  border-top: none;
+}
+
+.row-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow:
+    0 0 18px rgba(16, 185, 129, 0.1),
+    0 0 48px rgba(16, 185, 129, 0.05);
+}
+
 /* ---------- Insights ---------- */
 
 .insight {
