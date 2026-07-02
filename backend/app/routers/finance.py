@@ -5,11 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Category, CreditProfile, FinancialAccount, Transaction, User
+from app.models import Budget, Category, CreditProfile, FinancialAccount, Transaction, User
 from app.routers.auth import get_current_user
 from app.schemas.finance import (
     AccountCreate,
     AccountOut,
+    BudgetOut,
+    BudgetSet,
     CategoryOut,
     CreditProfileCreate,
     CreditProfileOut,
@@ -138,6 +140,48 @@ def create_transaction(
     db.commit()
     db.refresh(tx)
     return tx
+
+
+@router.get("/budgets", response_model=list[BudgetOut])
+def list_budgets(
+    month: int,
+    year: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return db.execute(
+        select(Budget).where(
+            Budget.user_id == user.id, Budget.month == month, Budget.year == year
+        )
+    ).scalars().all()
+
+
+@router.put("/budgets", response_model=BudgetOut)
+def set_budget(
+    data: BudgetSet,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create or update the budget for a category in a given month/year."""
+    cat = db.get(Category, data.category_id)
+    if cat is None or cat.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Category not found.")
+    budget = db.execute(
+        select(Budget).where(
+            Budget.user_id == user.id,
+            Budget.category_id == data.category_id,
+            Budget.month == data.month,
+            Budget.year == data.year,
+        )
+    ).scalar_one_or_none()
+    if budget:
+        budget.limit_amount = data.limit_amount
+    else:
+        budget = Budget(user_id=user.id, **data.model_dump())
+        db.add(budget)
+    db.commit()
+    db.refresh(budget)
+    return budget
 
 
 @router.get("/credit/profiles", response_model=list[CreditProfileOut])

@@ -1,39 +1,44 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ApiError } from '../api/auth'
+import { financeApi, type Account, type Budget, type Category, type Tx } from '../api/finance'
 import BudgetBar from '../components/BudgetBar'
 import StatCard from '../components/StatCard'
-import { financeApi, type Account, type Category, type Tx } from '../api/finance'
+import Toast from '../components/Toast'
 import TransactionListItem from '../components/TransactionListItem'
 import { budgetLevel, formatCurrency } from '../utils/format'
-
-// Monthly limits by category name (until budgets are user-editable).
-const LIMITS: Record<string, number> = {
-  Rent: 850,
-  Food: 300,
-  School: 200,
-  Shopping: 150,
-  Gas: 120,
-  Entertainment: 100,
-  Subscriptions: 60,
-}
 
 export default function Budgets() {
   const [categories, setCategories] = useState<Category[]>([])
   const [txs, setTxs] = useState<Tx[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [budgetRows, setBudgetRows] = useState<Budget[]>([])
   const [selected, setSelected] = useState<Category | null>(null)
+  const [editing, setEditing] = useState<{ category: Category; limit: string } | null>(null)
   const [error, setError] = useState('')
+  const [modalError, setModalError] = useState('')
+  const [toast, setToast] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
 
   useEffect(() => {
-    Promise.all([financeApi.categories(), financeApi.transactions(), financeApi.accounts()])
-      .then(([c, t, a]) => {
+    Promise.all([
+      financeApi.categories(),
+      financeApi.transactions(),
+      financeApi.accounts(),
+      financeApi.budgets(month, year),
+    ])
+      .then(([c, t, a, b]) => {
         setCategories(c)
         setTxs(t)
         setAccounts(a)
+        setBudgetRows(b)
       })
       .catch(() => setError('Could not load budgets. Is the backend running?'))
-  }, [])
+  }, [month, year])
 
-  const now = new Date()
   const monthTxs = useMemo(
     () =>
       txs.filter((t) => {
@@ -48,20 +53,26 @@ export default function Budgets() {
   )
 
   const accById = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts])
+  const limitByCat = useMemo(
+    () => new Map(budgetRows.map((b) => [b.category_id, Number(b.limit_amount)])),
+    [budgetRows],
+  )
 
   const budgets = useMemo(() => {
-    return Object.entries(LIMITS)
-      .map(([name, limit]) => {
-        const cat = categories.find((c) => c.name === name)
-        if (!cat) return null
+    return categories
+      .filter((c) => limitByCat.has(c.id))
+      .map((cat) => {
         const spent = monthTxs
           .filter((t) => t.category_id === cat.id)
           .reduce((s, t) => s + Number(t.amount), 0)
-        return { cat, limit, spent }
+        return { cat, limit: limitByCat.get(cat.id)!, spent }
       })
-      .filter((b): b is { cat: Category; limit: number; spent: number } => b !== null)
       .sort((a, b) => b.spent / b.limit - a.spent / a.limit)
-  }, [categories, monthTxs])
+  }, [categories, limitByCat, monthTxs])
+
+  const unbudgeted = categories.filter(
+    (c) => c.category_type === 'expense' && !limitByCat.has(c.id),
+  )
 
   const totalLimit = budgets.reduce((s, b) => s + b.limit, 0)
   const totalSpent = budgets.reduce((s, b) => s + b.spent, 0)
@@ -69,6 +80,40 @@ export default function Budgets() {
   const warnCount = budgets.filter((b) => budgetLevel(b.spent, b.limit) === 'warning').length
 
   const selectedTxs = selected ? monthTxs.filter((t) => t.category_id === selected.id) : []
+
+  async function saveBudget(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editing) return
+    setModalError('')
+    const limit = parseFloat(editing.limit)
+    if (isNaN(limit) || limit <= 0) {
+      return setModalError('Enter a limit greater than 0.')
+    }
+    setSaving(true)
+    try {
+      const saved = await financeApi.setBudget({
+        category_id: editing.category.id,
+        month,
+        year,
+        limit_amount: limit,
+      })
+      setBudgetRows((rows) => [
+        ...rows.filter((r) => r.category_id !== saved.category_id),
+        saved,
+      ])
+      setEditing(null)
+      setToast('Budget saved')
+    } catch (err) {
+      setModalError(err instanceof ApiError ? err.message : 'Something went wrong.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function openEditor(category: Category, currentLimit?: number) {
+    setModalError('')
+    setEditing({ category, limit: currentLimit ? String(currentLimit) : '' })
+  }
 
   return (
     <>
@@ -97,6 +142,12 @@ export default function Budgets() {
           />
         </div>
 
+        {budgets.length === 0 && !error && (
+          <div className="card empty">
+            No budgets set for this month yet — pick a category below to set your first limit.
+          </div>
+        )}
+
         <div className="grid budget-grid">
           {budgets.map(({ cat, limit, spent }) => (
             <div
@@ -112,10 +163,69 @@ export default function Budgets() {
                 spent={spent}
                 limit={limit}
               />
+              <button
+                className="btn btn-ghost"
+                style={{ marginTop: 12, padding: '6px 14px', fontSize: 13 }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openEditor(cat, limit)
+                }}
+              >
+                Edit limit
+              </button>
             </div>
           ))}
         </div>
+
+        {unbudgeted.length > 0 && (
+          <div>
+            <div className="card-title">Set a budget</div>
+            <div className="filters">
+              {unbudgeted.map((c) => (
+                <button key={c.id} className="chip" onClick={() => openEditor(c)}>
+                  + {c.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {editing && (
+        <div className="modal-overlay" onClick={() => setEditing(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>{editing.category.name} budget</h2>
+            {modalError && <div className="form-alert error">{modalError}</div>}
+            <form onSubmit={saveBudget} noValidate>
+              <div className="field">
+                <label htmlFor="budget-limit">
+                  Monthly limit for {now.toLocaleDateString('en-US', { month: 'long' })}
+                </label>
+                <input
+                  id="budget-limit"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="300.00"
+                  autoFocus
+                  value={editing.limit}
+                  onChange={(e) =>
+                    setEditing((ed) => (ed ? { ...ed, limit: e.target.value } : ed))
+                  }
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setEditing(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving…' : 'Save limit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {selected && (
         <div className="modal-overlay" onClick={() => setSelected(null)}>
@@ -143,6 +253,8 @@ export default function Budgets() {
           </div>
         </div>
       )}
+
+      {toast && <Toast message={toast} onClose={() => setToast('')} />}
     </>
   )
 }

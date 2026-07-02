@@ -3,13 +3,9 @@ import { Link } from 'react-router-dom'
 import BudgetBar from '../components/BudgetBar'
 import StatCard from '../components/StatCard'
 import UtilizationRing from '../components/UtilizationRing'
-import { financeApi, type Account, type Category, type CreditProfile, type Tx } from '../api/finance'
+import { financeApi, type Account, type Budget, type Category, type CreditProfile, type Tx } from '../api/finance'
 import TransactionListItem from '../components/TransactionListItem'
 import { formatCurrency, utilizationLabels, utilizationLevel } from '../utils/format'
-
-const LIMITS: Record<string, number> = {
-  Rent: 850, Food: 300, School: 200, Shopping: 150, Gas: 120, Entertainment: 100, Subscriptions: 60,
-}
 
 function daysAgo(n: number) {
   const d = new Date()
@@ -22,18 +18,22 @@ export default function Dashboard() {
   const [txs, setTxs] = useState<Tx[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [profiles, setProfiles] = useState<CreditProfile[]>([])
+  const [budgetRows, setBudgetRows] = useState<Budget[]>([])
 
   useEffect(() => {
+    const n = new Date()
     Promise.all([
       financeApi.accounts(),
       financeApi.transactions(),
       financeApi.categories(),
       financeApi.creditProfiles(),
-    ]).then(([a, t, c, p]) => {
+      financeApi.budgets(n.getMonth() + 1, n.getFullYear()),
+    ]).then(([a, t, c, p, b]) => {
       setAccounts(a)
       setTxs(t)
       setCategories(c)
       setProfiles(p)
+      setBudgetRows(b)
     })
   }, [])
 
@@ -69,12 +69,12 @@ export default function Dashboard() {
     return t.transaction_type === 'expense' && d.getMonth() === n.getMonth() && d.getFullYear() === n.getFullYear()
   })
 
-  const topBudgets = Object.entries(LIMITS)
-    .map(([name, lim]) => {
-      const cat = categories.find((c) => c.name === name)
+  const topBudgets = budgetRows
+    .map((b) => {
+      const cat = catById.get(b.category_id)
       if (!cat) return null
       const spent = monthTxs.filter((t) => t.category_id === cat.id).reduce((s, t) => s + Number(t.amount), 0)
-      return { cat, limit: lim, spent }
+      return { cat, limit: Number(b.limit_amount), spent }
     })
     .filter((b): b is { cat: Category; limit: number; spent: number } => b !== null)
     .sort((a, b) => b.spent / b.limit - a.spent / a.limit)

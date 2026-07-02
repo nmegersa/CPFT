@@ -57,6 +57,22 @@ class TransactionCreate(BaseModel):
     transaction_date: date
 
 
+class BudgetSet(BaseModel):
+    category_id: uuid.UUID
+    month: int = Field(ge=1, le=12)
+    year: int = Field(ge=2000, le=2100)
+    limit_amount: Decimal = Field(gt=0)
+
+
+class BudgetOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    category_id: uuid.UUID
+    month: int
+    year: int
+    limit_amount: Decimal
+
+
 class TransactionOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID

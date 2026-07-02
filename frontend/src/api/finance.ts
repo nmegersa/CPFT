@@ -60,6 +60,14 @@ export const financeApi = {
       headers: authed(),
       body: JSON.stringify(data),
     }),
+  budgets: (month: number, year: number) =>
+    request<Budget[]>(`/budgets?month=${month}&year=${year}`, { headers: authed() }),
+  setBudget: (data: { category_id: string; month: number; year: number; limit_amount: number }) =>
+    request<Budget>('/budgets', {
+      method: 'PUT',
+      headers: authed(),
+      body: JSON.stringify(data),
+    }),
   creditProfiles: () =>
     request<CreditProfile[]>('/credit/profiles', { headers: authed() }),
   createCreditProfile: (accountId: string, creditLimit: number) =>
@@ -68,6 +76,14 @@ export const financeApi = {
       headers: authed(),
       body: JSON.stringify({ account_id: accountId, credit_limit: creditLimit }),
     }),
+}
+
+export interface Budget {
+  id: string
+  category_id: string
+  month: number
+  year: number
+  limit_amount: string
 }
 
 export interface CreditProfile {
