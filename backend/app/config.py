@@ -13,5 +13,13 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
+    def model_post_init(self, __context) -> None:
+        # Hosted Postgres (Neon, Supabase, etc.) hands out plain postgresql://
+        # URLs; SQLAlchemy needs the psycopg2 driver spelled out.
+        if self.database_url.startswith("postgresql://"):
+            self.database_url = self.database_url.replace(
+                "postgresql://", "postgresql+psycopg2://", 1
+            )
+
 
 settings = Settings()
