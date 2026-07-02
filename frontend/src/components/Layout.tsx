@@ -4,6 +4,8 @@ import {
   BankIcon,
   CardIcon,
   ChartIcon,
+  ClockIcon,
+  CoinIcon,
   DollarIcon,
   HomeIcon,
   ListIcon,
@@ -19,10 +21,10 @@ const navItems = [
   { to: '/app/transactions', label: 'Transactions', icon: ListIcon },
   { to: '/app/payroll', label: 'Payroll', icon: DollarIcon },
   { to: '/app/budgets', label: 'Budgets', icon: ChartIcon },
-  { to: '/app/history', label: 'History', icon: ChartIcon },
+  { to: '/app/history', label: 'History', icon: ClockIcon },
   { to: '/app/credit', label: 'Credit', icon: CardIcon },
   { to: '/app/subscriptions', label: 'Subscriptions', icon: RepeatIcon },
-  { to: '/app/savings', label: 'Savings', icon: BankIcon },
+  { to: '/app/savings', label: 'Savings', icon: CoinIcon },
   { to: '/app/profile', label: 'Profile', icon: UserIcon },
 ]
 

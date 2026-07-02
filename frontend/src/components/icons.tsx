@@ -89,6 +89,24 @@ export function LogoutIcon({ size = 20 }: IconProps) {
   )
 }
 
+export function ClockIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 3" />
+    </svg>
+  )
+}
+
+export function CoinIcon({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v9M14.5 9.2c-.5-.7-1.4-1.2-2.5-1.2-1.5 0-2.7.9-2.7 2.1s1 1.7 2.7 1.9c1.9.2 2.9.8 2.9 2 0 1.2-1.2 2.2-2.9 2.2-1.2 0-2.2-.5-2.7-1.3" />
+    </svg>
+  )
+}
+
 export function LogoIcon({ size = 18 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
